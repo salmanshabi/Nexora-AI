@@ -105,13 +105,9 @@ function MenuItem({
       onClick={onClick}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      className="group flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-left transition-all duration-250 border"
+      className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all duration-200"
       style={{
-        backgroundColor: hovered ? `rgba(${rgb}, 0.07)` : "rgba(255,255,255,0.02)",
-        borderColor: hovered ? `rgba(${rgb}, 0.3)` : "rgba(255,255,255,0.06)",
-        boxShadow: hovered
-          ? `0 0 16px rgba(${rgb}, 0.1), inset 0 0 12px rgba(${rgb}, 0.04)`
-          : "none",
+        backgroundColor: hovered ? `rgba(${rgb}, 0.08)` : "transparent",
       }}
     >
       {/* Icon container with per-item glow */}
@@ -237,8 +233,8 @@ export default function AttachmentDropdown({
                 </span>
               </motion.div>
 
-              {/* Section items — each in its own frame */}
-              <div className="px-2.5 pb-2.5 flex flex-col gap-1.5">
+              {/* Section items */}
+              <div className="px-2 pb-2 flex flex-col gap-0.5">
                 {section.items.map((item) => {
                   const idx = globalIndex++;
                   return (
