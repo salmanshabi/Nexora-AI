@@ -704,14 +704,14 @@ export default function Home() {
                   <button
                     ref={attachBtnRef}
                     onClick={() => setShowAttachDropdown((prev) => !prev)}
-                    className={`mb-1 shrink-0 flex h-9 w-9 items-center justify-center rounded-lg border bg-gray-800 transition-all duration-200 ${
+                    className={`mb-1 shrink-0 flex h-10 w-10 items-center justify-center rounded-full border transition-all duration-300 ${
                       showAttachDropdown
-                        ? "border-cyan-500/50 text-cyan-400 bg-gray-700"
-                        : "border-gray-700 text-gray-400 hover:border-cyan-500/50 hover:text-cyan-400 hover:bg-gray-700"
+                        ? "border-cyan-400/60 text-cyan-300 bg-cyan-500/15 shadow-[0_0_16px_rgba(34,211,238,0.25),inset_0_0_8px_rgba(34,211,238,0.1)]"
+                        : "border-gray-600/50 text-gray-400 bg-gray-800/60 hover:border-cyan-500/40 hover:text-cyan-400 hover:bg-cyan-500/5 hover:shadow-[0_0_12px_rgba(34,211,238,0.15)]"
                     }`}
                     title="Attach files, photos, or links"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={`h-4.5 w-4.5 transition-transform duration-200 ${showAttachDropdown ? "rotate-45" : ""}`}>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={`h-4.5 w-4.5 transition-transform duration-300 ease-out ${showAttachDropdown ? "rotate-45" : ""}`}>
                       <path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" />
                     </svg>
                   </button>
