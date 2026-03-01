@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useBuilderStore } from './store/useBuilderStore';
 import { BuilderCanvas } from './components/canvas/BuilderCanvas';
-import { SidebarLayout } from './components/sidebar/SidebarLayout';
+import { RightPanel } from './components/right-panel/RightPanel';
 import { TopBar } from './components/topbar/TopBar';
 import { LeftPanel } from './components/left-panel/LeftPanel';
 import { getTemplateState } from '../templates/templateData';
@@ -55,7 +55,7 @@ export default function BuilderPage() {
             <div className="flex flex-1 overflow-hidden">
                 <LeftPanel />
                 <BuilderCanvas />
-                <SidebarLayout />
+                <RightPanel />
             </div>
         </div>
     );
