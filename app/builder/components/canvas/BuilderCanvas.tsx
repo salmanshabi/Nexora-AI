@@ -1,3 +1,4 @@
+"use client";
 import React from 'react';
 import { Reorder } from 'framer-motion';
 import { useBuilderStore } from '../../store/useBuilderStore';

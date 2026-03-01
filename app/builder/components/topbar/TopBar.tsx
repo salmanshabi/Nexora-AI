@@ -1,7 +1,7 @@
 "use client";
 import React from 'react';
 import { useBuilderStore } from '../../store/useBuilderStore';
-import { DeviceToggle } from '../canvas/DeviceToggle';
+import { DeviceToggle } from '../shared/DeviceToggle';
 import { Undo2, Redo2, Eye, Zap } from 'lucide-react';
 
 export function TopBar() {
@@ -29,7 +29,8 @@ export function TopBar() {
                     type="text"
                     value={websiteName}
                     onChange={(e) => updateWebsiteProps({ name: e.target.value })}
-                    className="bg-transparent text-sm font-semibold text-white outline-none hover:bg-gray-900 focus:bg-gray-900 px-2 py-1 rounded-md transition-colors min-w-0 max-w-[160px] truncate"
+                    aria-label="Site name"
+                    className="bg-transparent text-sm font-semibold text-white outline-none focus:ring-2 focus:ring-cyan-500/50 hover:bg-gray-900 focus:bg-gray-900 px-2 py-1 rounded-md transition-colors min-w-0 max-w-[160px] truncate"
                     title="Site name"
                 />
                 {activePage && (
@@ -74,7 +75,11 @@ export function TopBar() {
                     <span className="hidden sm:inline">Preview</span>
                 </button>
 
-                <button className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-black bg-cyan-500 hover:bg-cyan-400 rounded-lg transition-all shadow-[0_0_12px_rgba(34,211,238,0.3)]">
+                <button
+                    disabled
+                    title="Publishing coming soon"
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-black bg-cyan-500 hover:bg-cyan-400 rounded-lg transition-all shadow-[0_0_12px_rgba(34,211,238,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                     <Zap size={14} />
                     <span>Publish</span>
                 </button>
