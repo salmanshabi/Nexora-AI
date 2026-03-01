@@ -16,9 +16,11 @@ export interface BuilderState {
     // Panel UI State (not saved in history)
     leftPanelTab: 'pages' | 'layers' | 'add';
     inspectorTab: 'structure' | 'style' | 'content' | 'animate' | 'ai';
+    device: 'desktop' | 'tablet' | 'mobile';
 
     setLeftPanelTab: (tab: 'pages' | 'layers' | 'add') => void;
     setInspectorTab: (tab: 'structure' | 'style' | 'content' | 'animate' | 'ai') => void;
+    setDevice: (device: 'desktop' | 'tablet' | 'mobile') => void;
 
     // View Actions
     setActivePage: (pageId: string) => void;
@@ -154,9 +156,11 @@ export const useBuilderStore = create<BuilderState>((set) => ({
 
     leftPanelTab: 'layers',
     inspectorTab: 'structure',
+    device: 'desktop',
 
     setLeftPanelTab: (tab) => set({ leftPanelTab: tab }),
     setInspectorTab: (tab) => set({ inspectorTab: tab }),
+    setDevice: (device) => set({ device }),
 
     loadTemplate: (templateState) => set((state) => {
         const nextState = { ...state.present, ...templateState };

@@ -1,11 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Reorder } from 'framer-motion';
-import { Undo2, Redo2 } from 'lucide-react';
 import { useBuilderStore } from '../../store/useBuilderStore';
 import { SectionRenderer } from './SectionRenderer';
-import { DeviceToggle } from './DeviceToggle';
 import { SiteNavbar } from './SiteNavbar';
-import LanguageToggle from '@/app/components/LanguageToggle';
 
 export function BuilderCanvas() {
     const activePageId = useBuilderStore(state => state.activePageId);
@@ -14,13 +11,7 @@ export function BuilderCanvas() {
     const reorderSections = useBuilderStore(state => state.reorderSections);
     const setSelectedSection = useBuilderStore(state => state.setSelectedSection);
     const tokens = useBuilderStore(state => state.present.tokens);
-
-    const past = useBuilderStore(state => state.past);
-    const future = useBuilderStore(state => state.future);
-    const undo = useBuilderStore(state => state.undo);
-    const redo = useBuilderStore(state => state.redo);
-
-    const [device, setDevice] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
+    const device = useBuilderStore(state => state.device);
 
     if (!activePage) return <div className="flex-1 flex items-center justify-center text-gray-400">Page not found</div>;
 
@@ -34,40 +25,6 @@ export function BuilderCanvas() {
 
     return (
         <div className="flex-1 flex flex-col bg-[#050505] overflow-hidden" onClick={() => setSelectedSection(null)}>
-            {/* Top Bar / Header */}
-            <header className="h-14 bg-gray-950/80 backdrop-blur-md border-b border-gray-800 flex items-center justify-between px-6 shrink-0 z-50 shadow-sm">
-                <div className="flex items-center gap-4">
-                    <DeviceToggle current={device} onChange={setDevice} />
-                    <span className="text-xs font-mono text-gray-500 bg-gray-900 px-2 py-1 rounded border border-gray-800">
-                        {device === 'desktop' ? '100% (Desktop)' : device === 'tablet' ? '768px (Tablet)' : '375px (Mobile)'}
-                    </span>
-                </div>
-
-                <div className="flex items-center gap-4">
-                    <LanguageToggle />
-
-                    {/* Undo / Redo controls */}
-                    <div className="flex items-center gap-1 bg-gray-900 border border-gray-800 p-1 rounded-lg">
-                        <button
-                            onClick={(e) => { e.stopPropagation(); undo(); }}
-                            disabled={past.length === 0}
-                            className="p-1.5 text-gray-400 hover:text-white rounded-md hover:bg-gray-700 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
-                            title="Undo"
-                        >
-                            <Undo2 size={16} />
-                        </button>
-                        <button
-                            onClick={(e) => { e.stopPropagation(); redo(); }}
-                            disabled={future.length === 0}
-                            className="p-1.5 text-gray-400 hover:text-white rounded-md hover:bg-gray-700 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
-                            title="Redo"
-                        >
-                            <Redo2 size={16} />
-                        </button>
-                    </div>
-                </div>
-            </header>
-
             {/* Scalable Canvas Area */}
             <div className="flex-1 overflow-y-auto overflow-x-hidden p-8 flex justify-center custom-scrollbar">
                 <div
@@ -77,9 +34,6 @@ export function BuilderCanvas() {
                         fontFamily: tokens.typography.bodyFont,
                         color: tokens.colors.text,
                         backgroundColor: tokens.colors.background
-                    }}
-                    onClick={(e) => {
-                        // Allows deselecting when clicking specific empty areas, but mostly handled by parent
                     }}
                 >
                     <SiteNavbar />

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useBuilderStore } from './store/useBuilderStore';
 import { BuilderCanvas } from './components/canvas/BuilderCanvas';
 import { SidebarLayout } from './components/sidebar/SidebarLayout';
+import { TopBar } from './components/topbar/TopBar';
 import { getTemplateState } from '../templates/templateData';
 
 export default function BuilderPage() {
@@ -48,12 +49,14 @@ export default function BuilderPage() {
     );
 
     return (
-        <div className="flex h-screen w-full bg-[#050505] text-white selection:bg-cyan-500/30 overflow-hidden font-sans">
-            {/* Left side: The Live Scalable Canvas */}
-            <BuilderCanvas />
-
-            {/* Right side: The Core Configuration Sidebar */}
-            <SidebarLayout />
+        <div className="flex flex-col h-screen w-full bg-[#050505] text-white selection:bg-cyan-500/30 overflow-hidden font-sans">
+            <TopBar />
+            <div className="flex flex-1 overflow-hidden">
+                {/* LeftPanel added in Task 3 */}
+                <BuilderCanvas />
+                {/* RightPanel added in Task 5 — keep SidebarLayout for now */}
+                <SidebarLayout />
+            </div>
         </div>
     );
 }
