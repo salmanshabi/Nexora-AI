@@ -1,5 +1,6 @@
 "use client";
 import React from 'react';
+import { Plus } from 'lucide-react';
 import { Reorder } from 'framer-motion';
 import { useBuilderStore } from '../../store/useBuilderStore';
 import { SectionRenderer } from './SectionRenderer';
@@ -11,6 +12,7 @@ export function BuilderCanvas() {
     const activePage = pages.find(p => p.id === activePageId);
     const reorderSections = useBuilderStore(state => state.reorderSections);
     const setSelectedSection = useBuilderStore(state => state.setSelectedSection);
+    const setLeftPanelTab = useBuilderStore(state => state.setLeftPanelTab);
     const tokens = useBuilderStore(state => state.present.tokens);
     const device = useBuilderStore(state => state.device);
 
@@ -52,15 +54,22 @@ export function BuilderCanvas() {
                             // In a production app, we'd use useDragControls and attach it to a specific handle icon.
                             // For now, we allow dragging but it might be sensitive.
                             >
-                                <SectionRenderer section={section} index={index} />
+                                <SectionRenderer section={section} index={index} totalSections={activePage.sections.length} />
                             </Reorder.Item>
                         ))}
                     </Reorder.Group>
 
                     {activePage.sections.length === 0 && (
-                        <div className="flex flex-col items-center justify-center h-64 text-gray-600 border-2 border-dashed border-gray-800 rounded-xl m-8">
-                            <p className="font-medium">This page is empty.</p>
-                            <p className="text-sm mt-2 opacity-70">Add a section from the right sidebar.</p>
+                        <div className="flex flex-col items-center justify-center gap-4 h-64 text-gray-500 border-2 border-dashed border-gray-800 rounded-xl m-8">
+                            <Plus size={28} className="text-gray-600" />
+                            <p className="font-medium text-gray-400">This page is empty</p>
+                            <button
+                                onClick={(e) => { e.stopPropagation(); setLeftPanelTab('add'); }}
+                                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 text-sm font-medium transition-colors"
+                            >
+                                <Plus size={14} />
+                                Add first section
+                            </button>
                         </div>
                     )}
                 </div>
