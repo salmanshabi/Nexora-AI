@@ -3,13 +3,35 @@ import { ElementNode } from '../../store/types';
 import { useBuilderStore } from '../../store/useBuilderStore';
 import { ExternalLink } from 'lucide-react';
 
-export function DynamicButton({ element }: { element: ElementNode }) {
+interface DynamicButtonProps {
+    element: ElementNode;
+    isEditing?: boolean;
+    onSave?: (content: string) => void;
+    onDoubleClick?: (e: React.MouseEvent) => void;
+}
+
+export function DynamicButton({ element, isEditing, onSave, onDoubleClick }: DynamicButtonProps) {
     const tokens = useBuilderStore(state => state.present.tokens);
     const selectedElementId = useBuilderStore(state => state.selectedElementId);
     const setSelectedElement = useBuilderStore(state => state.setSelectedElement);
 
     const isSelected = selectedElementId === element.id;
     const variant = element.props.variant || 'primary';
+
+    const editRef = React.useRef<HTMLButtonElement>(null);
+    const cancelledRef = React.useRef(false);
+
+    React.useEffect(() => {
+        if (isEditing && editRef.current) {
+            editRef.current.focus();
+            // Select all text in the element
+            const range = document.createRange();
+            range.selectNodeContents(editRef.current);
+            const sel = window.getSelection();
+            sel?.removeAllRanges();
+            sel?.addRange(range);
+        }
+    }, [isEditing]);
 
     const getRoundness = () => {
         const shape = element.props.roundedCorners && element.props.roundedCorners !== 'inherit'
@@ -58,13 +80,35 @@ export function DynamicButton({ element }: { element: ElementNode }) {
         }
     };
 
+    const editingClasses = isEditing ? 'ring-2 ring-cyan-400 ring-offset-1 cursor-text outline-none' : '';
+
     return (
         <button
+            ref={editRef}
             onClick={(e) => {
                 e.stopPropagation();
                 setSelectedElement(element.id);
             }}
-            className={`relative font-semibold inline-flex items-center justify-center gap-2 transition-all ${getSizeClasses()} ${isSelected ? 'ring-2 ring-cyan-400 ring-offset-2 ring-offset-gray-950' : ''} hover:scale-105 shadow-xl`}
+            onDoubleClick={onDoubleClick}
+            contentEditable={isEditing || undefined}
+            suppressContentEditableWarning={isEditing}
+            onBlur={(e) => {
+                if (isEditing && !cancelledRef.current) {
+                    onSave?.(e.currentTarget.textContent || '');
+                }
+                cancelledRef.current = false;
+            }}
+            onKeyDown={(e: React.KeyboardEvent) => {
+                if (e.key === 'Escape') {
+                    cancelledRef.current = true;
+                    (e.target as HTMLElement).blur();
+                }
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    (e.target as HTMLElement).blur();
+                }
+            }}
+            className={`relative font-semibold inline-flex items-center justify-center gap-2 transition-all ${getSizeClasses()} ${isSelected ? 'ring-2 ring-cyan-400 ring-offset-2 ring-offset-gray-950' : ''} hover:scale-105 shadow-xl ${editingClasses}`}
             style={{
                 borderRadius: getRoundness(),
                 background: getBackground(),

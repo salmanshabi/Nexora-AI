@@ -51,7 +51,7 @@ export function SectionRenderer({ section, index }: Props) {
                 <div className={`relative ${getPaddingClass()} w-full transition-all`} style={{ background: getBg() }}>
                     <div className={`mx-auto flex flex-col items-center justify-center ${section.layout.width === 'full' ? 'w-full px-6' : 'max-w-6xl px-6'}`}>
                         <div className={`w-full grid gap-8 ${gridClass}`}>
-                            {section.elements.map(el => <ElementRenderer key={el.id} element={el} />)}
+                            {section.elements.map(el => <ElementRenderer key={el.id} element={el} sectionId={section.id} />)}
                         </div>
                     </div>
                 </div>

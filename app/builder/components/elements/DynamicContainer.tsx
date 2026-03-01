@@ -3,7 +3,7 @@ import { ElementNode } from '../../store/types';
 import { useBuilderStore } from '../../store/useBuilderStore';
 import { ElementRenderer } from './ElementRenderer';
 
-export function DynamicContainer({ element }: { element: ElementNode }) {
+export function DynamicContainer({ element, sectionId }: { element: ElementNode; sectionId: string }) {
     const tokens = useBuilderStore(state => state.present.tokens);
     const selectedElementId = useBuilderStore(state => state.selectedElementId);
     const setSelectedElement = useBuilderStore(state => state.setSelectedElement);
@@ -39,7 +39,7 @@ export function DynamicContainer({ element }: { element: ElementNode }) {
             }}
         >
             {element.children?.map(child => (
-                <ElementRenderer key={child.id} element={child} />
+                <ElementRenderer key={child.id} element={child} sectionId={sectionId} />
             ))}
         </div>
     );

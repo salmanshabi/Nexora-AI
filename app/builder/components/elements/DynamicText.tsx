@@ -2,15 +2,34 @@ import React from 'react';
 import { ElementNode } from '../../store/types';
 import { useBuilderStore } from '../../store/useBuilderStore';
 
-export function DynamicText({ element }: { element: ElementNode }) {
+interface DynamicTextProps {
+    element: ElementNode;
+    isEditing?: boolean;
+    onSave?: (content: string) => void;
+    onDoubleClick?: (e: React.MouseEvent) => void;
+}
+
+export function DynamicText({ element, isEditing, onSave, onDoubleClick }: DynamicTextProps) {
     const tokens = useBuilderStore(state => state.present.tokens);
     const selectedElementId = useBuilderStore(state => state.selectedElementId);
     const setSelectedElement = useBuilderStore(state => state.setSelectedElement);
-    const activePageId = useBuilderStore(state => state.activePageId);
-    // Note: updating elements will require a store action capable of traversing the tree 
-    // For now, click to select.
 
     const isSelected = selectedElementId === element.id;
+
+    const editRef = React.useRef<HTMLElement>(null);
+    const cancelledRef = React.useRef(false);
+
+    React.useEffect(() => {
+        if (isEditing && editRef.current) {
+            editRef.current.focus();
+            // Select all text in the element
+            const range = document.createRange();
+            range.selectNodeContents(editRef.current);
+            const sel = window.getSelection();
+            sel?.removeAllRanges();
+            sel?.addRange(range);
+        }
+    }, [isEditing]);
 
     // Default styles based on token mapping
     const getFontSize = () => {
@@ -28,17 +47,39 @@ export function DynamicText({ element }: { element: ElementNode }) {
         return element.props.textAlign?.desktop || 'left';
     };
 
+    const editingClasses = isEditing ? 'ring-2 ring-cyan-400 ring-offset-1 cursor-text outline-none' : '';
+
     return (
         <div
+            ref={editRef as React.RefObject<HTMLDivElement>}
             onClick={(e) => {
                 e.stopPropagation();
                 setSelectedElement(element.id);
             }}
-            className={`cursor-text outline-none transition-all ${isSelected ? 'ring-2 ring-cyan-500 rounded-sm' : 'hover:ring-1 hover:ring-gray-400/50'}`}
+            onDoubleClick={onDoubleClick}
+            contentEditable={isEditing || undefined}
+            suppressContentEditableWarning={isEditing}
+            onBlur={(e) => {
+                if (isEditing && !cancelledRef.current) {
+                    onSave?.(e.currentTarget.textContent || '');
+                }
+                cancelledRef.current = false;
+            }}
+            onKeyDown={(e: React.KeyboardEvent) => {
+                if (e.key === 'Escape') {
+                    cancelledRef.current = true;
+                    (e.target as HTMLElement).blur();
+                }
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    (e.target as HTMLElement).blur();
+                }
+            }}
+            className={`cursor-text outline-none transition-all ${isSelected ? 'ring-2 ring-cyan-500 rounded-sm' : 'hover:ring-1 hover:ring-gray-400/50'} ${editingClasses}`}
             style={{
                 color: element.props.customColor || tokens.colors.text,
                 fontSize: getFontSize(),
-                textAlign: getAlignment() as any,
+                textAlign: getAlignment() as React.CSSProperties['textAlign'],
                 width: element.props.fullWidth ? '100%' : 'auto',
                 ...element.props.style,
             }}
