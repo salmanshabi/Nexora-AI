@@ -7,6 +7,7 @@ import { useBuilderStore } from './store/useBuilderStore';
 import { BuilderCanvas } from './components/canvas/BuilderCanvas';
 import { SidebarLayout } from './components/sidebar/SidebarLayout';
 import { TopBar } from './components/topbar/TopBar';
+import { LeftPanel } from './components/left-panel/LeftPanel';
 import { getTemplateState } from '../templates/templateData';
 
 export default function BuilderPage() {
@@ -52,9 +53,8 @@ export default function BuilderPage() {
         <div className="flex flex-col h-screen w-full bg-[#050505] text-white selection:bg-cyan-500/30 overflow-hidden font-sans">
             <TopBar />
             <div className="flex flex-1 overflow-hidden">
-                {/* LeftPanel added in Task 3 */}
+                <LeftPanel />
                 <BuilderCanvas />
-                {/* RightPanel added in Task 5 — keep SidebarLayout for now */}
                 <SidebarLayout />
             </div>
         </div>
