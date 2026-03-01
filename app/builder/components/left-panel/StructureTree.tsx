@@ -50,22 +50,31 @@ function SectionRow({ section }: { section: Section }) {
 
     return (
         <div className="mb-0.5">
-            <button
-                onClick={() => setSelectedSection(section.id)}
-                className={`w-full flex items-center gap-1.5 px-2 py-1.5 rounded text-left transition-colors ${
-                    isSelected
-                        ? 'bg-cyan-950/60 text-cyan-300'
-                        : 'text-gray-300 hover:text-white hover:bg-gray-800/50'
-                }`}
-            >
-                <ChevronRight
-                    size={12}
-                    className={`shrink-0 transition-transform ${expanded ? 'rotate-90' : ''}`}
+            <div className="flex items-center w-full">
+                <button
                     onClick={(e) => { e.stopPropagation(); setExpanded(v => !v); }}
-                />
-                <span className="text-[11px] font-semibold truncate flex-1">{section.type}</span>
-                {section.isLocked && <Lock size={10} className="shrink-0 text-yellow-500" />}
-            </button>
+                    className={`p-1 shrink-0 rounded hover:bg-gray-700/50 transition-colors ${
+                        isSelected ? 'text-cyan-300' : 'text-gray-500 hover:text-gray-300'
+                    }`}
+                    title={expanded ? 'Collapse' : 'Expand'}
+                >
+                    <ChevronRight
+                        size={12}
+                        className={`transition-transform ${expanded ? 'rotate-90' : ''}`}
+                    />
+                </button>
+                <button
+                    onClick={() => setSelectedSection(section.id)}
+                    className={`flex-1 flex items-center gap-1.5 py-1 rounded text-left transition-colors min-w-0 ${
+                        isSelected
+                            ? 'text-cyan-300'
+                            : 'text-gray-300 hover:text-white hover:bg-gray-800/50'
+                    }`}
+                >
+                    <span className="text-[11px] font-semibold truncate flex-1">{section.type}</span>
+                    {section.isLocked && <Lock size={10} className="shrink-0 text-yellow-500" />}
+                </button>
+            </div>
 
             {expanded && section.elements && section.elements.length > 0 && (
                 <div className="ml-2 border-l border-gray-800 pl-1">

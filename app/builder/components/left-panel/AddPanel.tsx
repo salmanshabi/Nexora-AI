@@ -1,7 +1,7 @@
 "use client";
 import React from 'react';
 import { useBuilderStore } from '../../store/useBuilderStore';
-import { Section } from '../../store/types';
+import { createSection } from '../../utils/sectionFactory';
 
 const SECTION_TEMPLATES = [
     { label: 'Hero', type: 'Hero', icon: '⚡', description: 'Full-width hero with headline and CTA' },
@@ -15,22 +15,7 @@ export function AddPanel() {
     const addSection = useBuilderStore(state => state.addSection);
 
     const handleAdd = (type: string) => {
-        const newSection: Section = {
-            id: `${type.toLowerCase()}-${Date.now()}`,
-            type,
-            isLocked: false,
-            layout: {
-                width: 'contained',
-                padding: 'default',
-                columns: { desktop: 1 },
-                columnGap: 'md',
-                verticalAlign: 'center',
-                backgroundType: 'transparent',
-                animation: 'none',
-            },
-            elements: [],
-        };
-        addSection(activePageId, newSection);
+        addSection(activePageId, createSection(type));
     };
 
     return (
