@@ -16,7 +16,7 @@ export function DynamicText({ element, isEditing, onSave, onDoubleClick }: Dynam
 
     const isSelected = selectedElementId === element.id;
 
-    const editRef = React.useRef<HTMLElement>(null);
+    const editRef = React.useRef<HTMLDivElement>(null);
     const cancelledRef = React.useRef(false);
 
     React.useEffect(() => {
@@ -47,14 +47,12 @@ export function DynamicText({ element, isEditing, onSave, onDoubleClick }: Dynam
         return element.props.textAlign?.desktop || 'left';
     };
 
-    const editingClasses = isEditing ? 'ring-2 ring-cyan-400 ring-offset-1 cursor-text outline-none' : '';
-
     return (
         <div
-            ref={editRef as React.RefObject<HTMLDivElement>}
+            ref={editRef}
             onClick={(e) => {
                 e.stopPropagation();
-                setSelectedElement(element.id);
+                if (!isEditing) setSelectedElement(element.id);
             }}
             onDoubleClick={onDoubleClick}
             contentEditable={isEditing || undefined}
@@ -63,6 +61,7 @@ export function DynamicText({ element, isEditing, onSave, onDoubleClick }: Dynam
                 if (isEditing && !cancelledRef.current) {
                     onSave?.(e.currentTarget.textContent || '');
                 }
+                // Reset after save/discard so next edit starts clean
                 cancelledRef.current = false;
             }}
             onKeyDown={(e: React.KeyboardEvent) => {
@@ -75,7 +74,7 @@ export function DynamicText({ element, isEditing, onSave, onDoubleClick }: Dynam
                     (e.target as HTMLElement).blur();
                 }
             }}
-            className={`cursor-text outline-none transition-all ${isSelected ? 'ring-2 ring-cyan-500 rounded-sm' : 'hover:ring-1 hover:ring-gray-400/50'} ${editingClasses}`}
+            className={`cursor-text outline-none transition-all ${isEditing ? 'ring-2 ring-cyan-400 ring-offset-1' : isSelected ? 'ring-2 ring-cyan-500 rounded-sm' : 'hover:ring-1 hover:ring-gray-400/50'}`}
             style={{
                 color: element.props.customColor || tokens.colors.text,
                 fontSize: getFontSize(),

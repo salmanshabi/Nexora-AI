@@ -80,14 +80,12 @@ export function DynamicButton({ element, isEditing, onSave, onDoubleClick }: Dyn
         }
     };
 
-    const editingClasses = isEditing ? 'ring-2 ring-cyan-400 ring-offset-1 cursor-text outline-none' : '';
-
     return (
         <button
             ref={editRef}
             onClick={(e) => {
                 e.stopPropagation();
-                setSelectedElement(element.id);
+                if (!isEditing) setSelectedElement(element.id);
             }}
             onDoubleClick={onDoubleClick}
             contentEditable={isEditing || undefined}
@@ -96,6 +94,7 @@ export function DynamicButton({ element, isEditing, onSave, onDoubleClick }: Dyn
                 if (isEditing && !cancelledRef.current) {
                     onSave?.(e.currentTarget.textContent || '');
                 }
+                // Reset after save/discard so next edit starts clean
                 cancelledRef.current = false;
             }}
             onKeyDown={(e: React.KeyboardEvent) => {
@@ -108,7 +107,7 @@ export function DynamicButton({ element, isEditing, onSave, onDoubleClick }: Dyn
                     (e.target as HTMLElement).blur();
                 }
             }}
-            className={`relative font-semibold inline-flex items-center justify-center gap-2 transition-all ${getSizeClasses()} ${isSelected ? 'ring-2 ring-cyan-400 ring-offset-2 ring-offset-gray-950' : ''} hover:scale-105 shadow-xl ${editingClasses}`}
+            className={`relative font-semibold inline-flex items-center justify-center gap-2 transition-all ${getSizeClasses()} ${isEditing ? 'ring-2 ring-cyan-400 ring-offset-1 cursor-text outline-none' : isSelected ? 'ring-2 ring-cyan-400 ring-offset-2 ring-offset-gray-950' : ''} hover:scale-105 shadow-xl`}
             style={{
                 borderRadius: getRoundness(),
                 background: getBackground(),
@@ -119,7 +118,7 @@ export function DynamicButton({ element, isEditing, onSave, onDoubleClick }: Dyn
             }}
         >
             {element.props.content || 'Button'}
-            {element.props.url && element.props.openInNewTab && <ExternalLink size={14} className="opacity-50" />}
+            {!isEditing && element.props.url && element.props.openInNewTab && <ExternalLink size={14} className="opacity-50" />}
         </button>
     );
 }
