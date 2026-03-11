@@ -2,10 +2,17 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from "next/navigation";
 import { useBuilderStore } from '../../store/useBuilderStore';
+import type { AppStateSnapshot } from '../../store/types';
 import { DeviceToggle } from '../shared/DeviceToggle';
-import { Undo2, Redo2, Eye, Zap, Save, Check, ChevronDown, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import { Undo2, Redo2, Eye, Zap, Save, Check, ChevronDown, ZoomIn, ZoomOut, RotateCcw, History } from 'lucide-react';
 
 const AUTO_SAVE_DELAY_MS = 4000;
+
+interface ProjectVersion {
+    id: string;
+    reason: string | null;
+    created_at: string;
+}
 
 export function TopBar() {
     const router = useRouter();
@@ -14,6 +21,7 @@ export function TopBar() {
     const past = useBuilderStore(state => state.past);
     const future = useBuilderStore(state => state.future);
     const projectId = useBuilderStore(state => state.projectId);
+    const loadProject = useBuilderStore(state => state.loadProject);
     const setProjectId = useBuilderStore(state => state.setProjectId);
     const presentState = useBuilderStore(state => state.present);
     const websiteName = useBuilderStore(state => state.present.websiteProps.name);
@@ -30,7 +38,13 @@ export function TopBar() {
     const [saveError, setSaveError] = useState<string | null>(null);
     const [isDirty, setIsDirty] = useState(false);
     const [pageDropdownOpen, setPageDropdownOpen] = useState(false);
+    const [versionsOpen, setVersionsOpen] = useState(false);
+    const [versions, setVersions] = useState<ProjectVersion[]>([]);
+    const [versionsLoading, setVersionsLoading] = useState(false);
+    const [versionsError, setVersionsError] = useState<string | null>(null);
+    const [restoringVersionId, setRestoringVersionId] = useState<string | null>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const versionsRef = useRef<HTMLDivElement>(null);
     const saveResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const previousProjectId = useRef<string | null>(null);
@@ -66,7 +80,7 @@ export function TopBar() {
                     body: JSON.stringify({
                         name: websiteName,
                         state: presentState,
-                        reason: 'manual_save',
+                        reason: source === 'auto' ? 'auto_save' : 'manual_save',
                     }),
                 });
 
@@ -114,6 +128,81 @@ export function TopBar() {
     const handleSave = async () => {
         await saveProject('manual');
     };
+
+    const fetchVersions = useCallback(async () => {
+        if (!projectId) {
+            setVersions([]);
+            setVersionsError('Save this project first to enable version history.');
+            return;
+        }
+
+        setVersionsLoading(true);
+        setVersionsError(null);
+
+        try {
+            const response = await fetch(`/api/projects/${projectId}/versions?limit=20`, { cache: 'no-store' });
+            const payload: { error?: string; versions?: ProjectVersion[] } = await response.json();
+
+            if (!response.ok) {
+                throw new Error(payload?.error || 'Failed to load versions');
+            }
+
+            setVersions(payload.versions ?? []);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to load versions';
+            setVersionsError(message);
+            setVersions([]);
+        } finally {
+            setVersionsLoading(false);
+        }
+    }, [projectId]);
+
+    const handleToggleVersions = async () => {
+        if (versionsOpen) {
+            setVersionsOpen(false);
+            return;
+        }
+
+        setVersionsOpen(true);
+        await fetchVersions();
+    };
+
+    const restoreVersion = useCallback(async (versionId: string) => {
+        if (!projectId || restoringVersionId) return;
+        if (isDirty && !window.confirm('You have unsaved changes. Restore anyway?')) return;
+
+        setRestoringVersionId(versionId);
+        setVersionsError(null);
+
+        try {
+            const response = await fetch(`/api/projects/${projectId}/versions/${versionId}/restore`, {
+                method: 'POST',
+            });
+            const payload: { error?: string; project?: { state?: unknown } } = await response.json();
+
+            if (!response.ok) {
+                throw new Error(payload?.error || 'Failed to restore version');
+            }
+
+            const restoredState = payload?.project?.state;
+            if (!restoredState || typeof restoredState !== 'object') {
+                throw new Error('Restore response did not include a valid project state');
+            }
+
+            loadProject(projectId, restoredState as AppStateSnapshot);
+            lastSavedSnapshot.current = JSON.stringify(restoredState);
+            setIsDirty(false);
+            setSaveStatus('saved');
+            if (saveResetTimer.current) clearTimeout(saveResetTimer.current);
+            saveResetTimer.current = setTimeout(() => setSaveStatus('idle'), 2000);
+            setVersionsOpen(false);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to restore version';
+            setVersionsError(message);
+        } finally {
+            setRestoringVersionId(null);
+        }
+    }, [isDirty, loadProject, projectId, restoringVersionId]);
 
     // Keep unsaved-state baseline aligned with current loaded project and in-memory edits.
     useEffect(() => {
@@ -163,6 +252,9 @@ export function TopBar() {
             if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
                 setPageDropdownOpen(false);
             }
+            if (versionsRef.current && !versionsRef.current.contains(e.target as Node)) {
+                setVersionsOpen(false);
+            }
         };
         document.addEventListener('mousedown', handleClickOutside);
         return () => {
@@ -173,6 +265,15 @@ export function TopBar() {
     }, []);
 
     const zoomPercent = Math.round(canvasZoom * 100);
+
+    const formatVersionReason = (reason: string | null) => {
+        if (!reason) return 'Snapshot';
+        if (reason === 'initial_create') return 'Initial';
+        if (reason === 'manual_save') return 'Manual save';
+        if (reason === 'auto_save') return 'Autosave';
+        if (reason.startsWith('restore:')) return 'Restore point';
+        return reason.replaceAll('_', ' ');
+    };
 
     return (
         <div className="flex items-center justify-between h-[56px] px-4 bg-[#0d0d0d] border-b border-gray-800/60 shrink-0 z-50">
@@ -279,6 +380,71 @@ export function TopBar() {
                 </button>
 
                 <div className="w-px h-6 bg-gray-800 mx-0.5" />
+
+                <div className="relative" ref={versionsRef}>
+                    <button
+                        onClick={() => { void handleToggleVersions(); }}
+                        disabled={!projectId && saveStatus === 'saving'}
+                        title={projectId ? 'Version history' : 'Save once to create version history'}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-300 hover:text-white border border-gray-700 bg-gray-800 hover:bg-gray-700 rounded-lg transition-all disabled:opacity-60"
+                    >
+                        <History size={14} />
+                        <span className="hidden sm:inline">Versions</span>
+                    </button>
+
+                    {versionsOpen && (
+                        <div className="absolute right-0 top-full mt-2 w-80 rounded-lg border border-gray-700/80 bg-[#171717] shadow-2xl shadow-black/50 z-50 p-2">
+                            <div className="flex items-center justify-between px-2 py-1.5">
+                                <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Version History</p>
+                                <button
+                                    onClick={() => { void fetchVersions(); }}
+                                    className="text-[11px] text-cyan-300 hover:text-cyan-200"
+                                >
+                                    Refresh
+                                </button>
+                            </div>
+
+                            {!projectId && (
+                                <p className="px-2 py-4 text-xs text-amber-400">Save this project first to enable versions.</p>
+                            )}
+
+                            {projectId && versionsLoading && (
+                                <p className="px-2 py-4 text-xs text-gray-400">Loading versions...</p>
+                            )}
+
+                            {projectId && !versionsLoading && versionsError && (
+                                <p className="px-2 py-4 text-xs text-red-400">{versionsError}</p>
+                            )}
+
+                            {projectId && !versionsLoading && !versionsError && versions.length === 0 && (
+                                <p className="px-2 py-4 text-xs text-gray-500">No snapshots yet.</p>
+                            )}
+
+                            {projectId && !versionsLoading && !versionsError && versions.length > 0 && (
+                                <div className="max-h-72 overflow-y-auto space-y-1">
+                                    {versions.map((version) => (
+                                        <button
+                                            key={version.id}
+                                            onClick={() => { void restoreVersion(version.id); }}
+                                            disabled={restoringVersionId !== null}
+                                            className="w-full rounded-md border border-transparent px-2 py-2 text-left hover:border-cyan-500/30 hover:bg-cyan-500/10 transition-colors disabled:opacity-60"
+                                        >
+                                            <p className="text-xs font-medium text-gray-200">
+                                                {formatVersionReason(version.reason)}
+                                            </p>
+                                            <p className="text-[11px] text-gray-500 mt-0.5">
+                                                {new Date(version.created_at).toLocaleString()}
+                                            </p>
+                                            {restoringVersionId === version.id && (
+                                                <p className="text-[11px] text-cyan-300 mt-1">Restoring...</p>
+                                            )}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
 
                 {/* Save button with status */}
                 <button

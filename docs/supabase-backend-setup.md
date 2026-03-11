@@ -27,5 +27,7 @@ You can apply it through the Supabase SQL editor or via Supabase CLI migration f
 - `PATCH /api/projects/:id`
 - `DELETE /api/projects/:id`
 - `POST /api/projects/:id/assets` (multipart image upload to `project-assets` bucket)
+- `GET /api/projects/:id/versions` (list snapshots)
+- `POST /api/projects/:id/versions/:versionId/restore` (restore snapshot)
 
 These routes currently authorize via existing NextAuth session (`auth().user.id`) and use Supabase database tables.
