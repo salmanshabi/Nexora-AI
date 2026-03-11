@@ -120,6 +120,39 @@ export interface Database {
         };
         Relationships: [];
       };
+      published_sites: {
+        Row: {
+          id: string;
+          project_id: string;
+          owner_id: string;
+          slug: string;
+          site_state: Json;
+          is_active: boolean;
+          published_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          owner_id: string;
+          slug: string;
+          site_state: Json;
+          is_active?: boolean;
+          published_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          project_id?: string;
+          owner_id?: string;
+          slug?: string;
+          site_state?: Json;
+          is_active?: boolean;
+          published_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

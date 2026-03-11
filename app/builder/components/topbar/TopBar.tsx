@@ -14,6 +14,8 @@ interface ProjectVersion {
     created_at: string;
 }
 
+type PublishStatus = 'idle' | 'publishing' | 'published';
+
 export function TopBar() {
     const router = useRouter();
     const undo = useBuilderStore(state => state.undo);
@@ -43,9 +45,13 @@ export function TopBar() {
     const [versionsLoading, setVersionsLoading] = useState(false);
     const [versionsError, setVersionsError] = useState<string | null>(null);
     const [restoringVersionId, setRestoringVersionId] = useState<string | null>(null);
+    const [publishStatus, setPublishStatus] = useState<PublishStatus>('idle');
+    const [publishError, setPublishError] = useState<string | null>(null);
+    const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const versionsRef = useRef<HTMLDivElement>(null);
     const saveResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const publishResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const previousProjectId = useRef<string | null>(null);
     const lastSavedSnapshot = useRef<string | null>(null);
@@ -54,8 +60,9 @@ export function TopBar() {
 
     const activePage = pages.find(p => p.id === activePageId);
 
-    const saveProject = useCallback(async (source: 'manual' | 'auto') => {
-        if (saveStatus === 'saving') return;
+    const saveProject = useCallback(async (source: 'manual' | 'auto'): Promise<string | null> => {
+        if (saveStatus === 'saving') return null;
+        let currentProjectId = projectId;
 
         const parseError = async (response: Response) => {
             try {
@@ -110,6 +117,7 @@ export function TopBar() {
 
                 setProjectId(newProjectId);
                 router.replace(`/builder?project=${newProjectId}`);
+                currentProjectId = newProjectId;
             }
 
             lastSavedSnapshot.current = stateSnapshot;
@@ -117,11 +125,13 @@ export function TopBar() {
             setSaveStatus('saved');
             if (saveResetTimer.current) clearTimeout(saveResetTimer.current);
             saveResetTimer.current = setTimeout(() => setSaveStatus('idle'), 2000);
+            return currentProjectId;
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Failed to save project';
             console.error('Save project error:', error);
             setSaveError(message);
             setSaveStatus('idle');
+            return null;
         }
     }, [projectId, presentState, router, saveStatus, setProjectId, stateSnapshot, websiteName]);
 
@@ -204,6 +214,72 @@ export function TopBar() {
         }
     }, [isDirty, loadProject, projectId, restoringVersionId]);
 
+    const refreshPublishStatus = useCallback(async () => {
+        if (!projectId) {
+            setPublishedUrl(null);
+            setPublishError(null);
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/projects/${projectId}/publish`, { cache: 'no-store' });
+            const payload: { published?: boolean; publicUrl?: string; error?: string } = await response.json();
+            if (!response.ok) {
+                throw new Error(payload?.error || 'Failed to load publish status');
+            }
+
+            if (payload.published && payload.publicUrl) {
+                setPublishedUrl(payload.publicUrl);
+            } else {
+                setPublishedUrl(null);
+            }
+            setPublishError(null);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to load publish status';
+            setPublishError(message);
+        }
+    }, [projectId]);
+
+    const handlePublish = async () => {
+        if (publishStatus === 'publishing') return;
+
+        setPublishError(null);
+        setPublishStatus('publishing');
+
+        let currentProjectId = projectId;
+        if (!currentProjectId) {
+            currentProjectId = await saveProject('manual');
+        }
+
+        if (!currentProjectId) {
+            setPublishStatus('idle');
+            setPublishError('Save project first before publishing.');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/projects/${currentProjectId}/publish`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({}),
+            });
+            const payload: { publicUrl?: string; error?: string } = await response.json();
+            if (!response.ok || !payload.publicUrl) {
+                throw new Error(payload?.error || 'Failed to publish');
+            }
+
+            setPublishedUrl(payload.publicUrl);
+            setPublishStatus('published');
+            if (publishResetTimer.current) clearTimeout(publishResetTimer.current);
+            publishResetTimer.current = setTimeout(() => setPublishStatus('idle'), 2500);
+            window.open(payload.publicUrl, '_blank');
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to publish';
+            setPublishStatus('idle');
+            setPublishError(message);
+        }
+    };
+
     // Keep unsaved-state baseline aligned with current loaded project and in-memory edits.
     useEffect(() => {
         if (lastSavedSnapshot.current === null) {
@@ -222,6 +298,10 @@ export function TopBar() {
 
         setIsDirty(lastSavedSnapshot.current !== stateSnapshot);
     }, [projectId, stateSnapshot]);
+
+    useEffect(() => {
+        void refreshPublishStatus();
+    }, [refreshPublishStatus]);
 
     // Debounced autosave for unsaved changes.
     useEffect(() => {
@@ -261,6 +341,7 @@ export function TopBar() {
             document.removeEventListener('mousedown', handleClickOutside);
             if (saveResetTimer.current) clearTimeout(saveResetTimer.current);
             if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+            if (publishResetTimer.current) clearTimeout(publishResetTimer.current);
         };
     }, []);
 
@@ -473,22 +554,43 @@ export function TopBar() {
                 </button>
 
                 <button
-                    disabled
-                    title="Publishing coming soon"
-                    className="flex items-center gap-1.5 px-4 py-1.5 text-sm font-semibold text-black bg-cyan-500 hover:bg-cyan-400 rounded-lg transition-all shadow-[0_0_12px_rgba(34,211,238,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={() => { void handlePublish(); }}
+                    disabled={publishStatus === 'publishing'}
+                    title={publishError ? publishError : (publishedUrl ? `Live: ${publishedUrl}` : 'Publish site')}
+                    className={`flex items-center gap-1.5 px-4 py-1.5 text-sm font-semibold rounded-lg transition-all border ${publishStatus === 'published'
+                        ? 'text-emerald-100 bg-emerald-600 border-emerald-500'
+                        : publishStatus === 'publishing'
+                            ? 'text-cyan-100 bg-cyan-700 border-cyan-600 cursor-wait'
+                            : 'text-black bg-cyan-500 hover:bg-cyan-400 border-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.3)]'
+                        }`}
                 >
-                    <Zap size={14} />
-                    <span>Publish</span>
+                    {publishStatus === 'publishing' ? <RotateCcw size={14} className="animate-spin" /> : <Zap size={14} />}
+                    <span>{publishStatus === 'published' ? 'Published' : publishStatus === 'publishing' ? 'Publishing...' : 'Publish'}</span>
                 </button>
                 {saveError && (
                     <span className="hidden lg:inline text-xs text-red-400 ml-2 max-w-[220px] truncate" title={saveError}>
                         {saveError}
                     </span>
                 )}
+                {!saveError && publishError && (
+                    <span className="hidden lg:inline text-xs text-red-400 ml-2 max-w-[220px] truncate" title={publishError}>
+                        {publishError}
+                    </span>
+                )}
                 {!saveError && (
                     <span className={`hidden xl:inline text-xs ml-2 ${isDirty ? 'text-amber-400' : 'text-emerald-400'}`}>
                         {saveStatus === 'saving' ? 'Saving…' : isDirty ? 'Unsaved changes' : 'All changes saved'}
                     </span>
+                )}
+                {publishedUrl && (
+                    <a
+                        href={publishedUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hidden 2xl:inline text-xs text-cyan-300 hover:text-cyan-200 underline ml-2"
+                    >
+                        View live site
+                    </a>
                 )}
             </div>
         </div>
