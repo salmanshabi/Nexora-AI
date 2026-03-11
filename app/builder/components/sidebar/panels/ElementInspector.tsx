@@ -1,7 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { useBuilderStore } from '../../../store/useBuilderStore';
 import { ElementNode } from '../../../store/types';
-import { Type, PaintBucket, Link2, Maximize, Zap, LayoutTemplate, Box, Type as TypeIcon } from 'lucide-react';
+import { Type, PaintBucket, Link2, LayoutTemplate, Box, Type as TypeIcon } from 'lucide-react';
 import { UnitInput } from './UnitInput';
 import { useLanguage } from '@/app/context/LanguageContext';
 import { translations } from '@/app/translations';
@@ -9,11 +9,15 @@ import { translations } from '@/app/translations';
 export function ElementInspector() {
     const activePageId = useBuilderStore(state => state.activePageId);
     const selectedElementId = useBuilderStore(state => state.selectedElementId);
+    const projectId = useBuilderStore(state => state.projectId);
     const pages = useBuilderStore(state => state.present.pages);
     const updateElement = useBuilderStore(state => state.updateElement);
 
     const { lang } = useLanguage();
     const t = translations[lang].builder;
+    const imageUploadInputRef = useRef<HTMLInputElement>(null);
+    const [isUploadingImage, setIsUploadingImage] = useState(false);
+    const [uploadError, setUploadError] = useState<string | null>(null);
 
     const match = useMemo(() => {
         if (!selectedElementId) return null;
@@ -47,7 +51,7 @@ export function ElementInspector() {
     const { sectionId, element } = match;
     const customStyle = element.props.style || {};
 
-    const updateProp = (key: string, value: any) => {
+    const updateProp = (key: string, value: unknown) => {
         updateElement(activePageId, sectionId, element.id, { [key]: value });
     };
 
@@ -59,6 +63,49 @@ export function ElementInspector() {
             newStyle[key] = value;
         }
         updateProp('style', newStyle);
+    };
+
+    const uploadImageToProject = async (file: File | null) => {
+        if (!file) return;
+
+        if (!projectId) {
+            setUploadError('Save this project first, then upload an image.');
+            return;
+        }
+
+        try {
+            setIsUploadingImage(true);
+            setUploadError(null);
+
+            const formData = new FormData();
+            formData.set('file', file);
+
+            const response = await fetch(`/api/projects/${projectId}/assets`, {
+                method: 'POST',
+                body: formData,
+            });
+
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                const message = typeof payload?.error === 'string' ? payload.error : 'Failed to upload image';
+                throw new Error(message);
+            }
+
+            const uploadedUrl = payload?.asset?.url;
+            if (typeof uploadedUrl !== 'string' || uploadedUrl.length === 0) {
+                throw new Error('Upload succeeded but URL was missing');
+            }
+
+            updateProp('url', uploadedUrl);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to upload image';
+            setUploadError(message);
+        } finally {
+            setIsUploadingImage(false);
+            if (imageUploadInputRef.current) {
+                imageUploadInputRef.current.value = '';
+            }
+        }
     };
 
     return (
@@ -104,6 +151,31 @@ export function ElementInspector() {
                         onChange={(e) => updateProp('url', e.target.value)}
                         className="w-full bg-gray-950 border border-gray-800 rounded-lg p-3 text-sm text-gray-300 focus:ring-1 focus:ring-cyan-500 outline-none mb-4"
                     />
+                    <div className="flex items-center gap-3 mb-4">
+                        <input
+                            ref={imageUploadInputRef}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                                const file = e.target.files?.[0] ?? null;
+                                void uploadImageToProject(file);
+                            }}
+                        />
+                        <button
+                            onClick={() => imageUploadInputRef.current?.click()}
+                            disabled={isUploadingImage}
+                            className="inline-flex items-center gap-2 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-300 hover:border-cyan-400 hover:bg-cyan-500/20 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                        >
+                            {isUploadingImage ? 'Uploading...' : 'Upload from device'}
+                        </button>
+                        {!projectId && (
+                            <span className="text-[11px] text-amber-400">Save project once to enable uploads.</span>
+                        )}
+                    </div>
+                    {uploadError && (
+                        <p className="text-xs text-red-400 mb-4">{uploadError}</p>
+                    )}
 
                     <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-3">{t.inspector.objectFit}</h3>
                     <div className="flex bg-gray-950 p-1 rounded-lg border border-gray-800 shadow-inner">

@@ -15,6 +15,7 @@ SUPABASE_SERVICE_ROLE_KEY=...
 Run the SQL migration in your Supabase project:
 
 - File: `supabase/migrations/20260311163500_backend_phase1_phase3.sql`
+- File: `supabase/migrations/20260311174000_project_assets_storage.sql`
 
 You can apply it through the Supabase SQL editor or via Supabase CLI migration flow.
 
@@ -25,5 +26,6 @@ You can apply it through the Supabase SQL editor or via Supabase CLI migration f
 - `GET /api/projects/:id`
 - `PATCH /api/projects/:id`
 - `DELETE /api/projects/:id`
+- `POST /api/projects/:id/assets` (multipart image upload to `project-assets` bucket)
 
 These routes currently authorize via existing NextAuth session (`auth().user.id`) and use Supabase database tables.
