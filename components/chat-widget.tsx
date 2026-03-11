@@ -91,7 +91,7 @@ export function ChatWidget() {
             {messages.map((msg, index) => (
               <div 
                 key={index}
-                className={\`flex items-start \${msg.role === 'user' ? 'justify-end' : 'justify-start'}\`}
+                className={`flex items-start ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 {msg.role === 'assistant' && (
                   <div className="w-6 h-6 rounded-full bg-primary/10 flex-shrink-0 flex items-center justify-center text-primary mr-2 mt-1">
@@ -99,11 +99,11 @@ export function ChatWidget() {
                   </div>
                 )}
                 
-                <div className={\`max-w-[80%] rounded-2xl px-4 py-2 text-sm \${
-                  msg.role === 'user' 
-                    ? 'bg-primary text-primary-foreground rounded-tr-sm' 
+                <div className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm ${
+                  msg.role === 'user'
+                    ? 'bg-primary text-primary-foreground rounded-tr-sm'
                     : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 rounded-tl-sm prose prose-sm dark:prose-invert prose-p:leading-relaxed prose-pre:p-0'
-                }\`}>
+                }`}>
                   {msg.role === 'user' ? (
                     msg.content
                   ) : (
@@ -155,11 +155,11 @@ export function ChatWidget() {
       {/* Toggle Button */}
       <button
         onClick={toggleChat}
-        className={\`w-14 h-14 rounded-full flex items-center justify-center shadow-xl transition-all duration-300 hover:scale-105 \${
-          isOpen 
-            ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400' 
+        className={`w-14 h-14 rounded-full flex items-center justify-center shadow-xl transition-all duration-300 hover:scale-105 ${
+          isOpen
+            ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'
             : 'bg-primary text-primary-foreground'
-        }\`}
+        }`}
       >
         {isOpen ? <X className="w-6 h-6" /> : <MessageSquare className="w-6 h-6" />}
       </button>

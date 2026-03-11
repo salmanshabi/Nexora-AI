@@ -34,6 +34,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       projects: {
         Row: {
@@ -60,6 +61,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       project_versions: {
         Row: {
@@ -86,6 +88,7 @@ export interface Database {
           reason?: string | null;
           created_at?: string;
         };
+        Relationships: [];
       };
       ai_usage_logs: {
         Row: {
@@ -115,6 +118,7 @@ export interface Database {
           metadata?: Json | null;
           created_at?: string;
         };
+        Relationships: [];
       };
     };
     Views: Record<string, never>;
