@@ -1,9 +1,11 @@
 "use client";
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from "next/navigation";
 import { useBuilderStore } from '../../store/useBuilderStore';
 import { DeviceToggle } from '../shared/DeviceToggle';
 import { Undo2, Redo2, Eye, Zap, Save, Check, ChevronDown, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+
+const AUTO_SAVE_DELAY_MS = 4000;
 
 export function TopBar() {
     const router = useRouter();
@@ -26,17 +28,20 @@ export function TopBar() {
 
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
     const [saveError, setSaveError] = useState<string | null>(null);
+    const [isDirty, setIsDirty] = useState(false);
     const [pageDropdownOpen, setPageDropdownOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const saveResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const previousProjectId = useRef<string | null>(null);
+    const lastSavedSnapshot = useRef<string | null>(null);
+
+    const stateSnapshot = useMemo(() => JSON.stringify(presentState), [presentState]);
 
     const activePage = pages.find(p => p.id === activePageId);
 
-    const handleSave = async () => {
+    const saveProject = useCallback(async (source: 'manual' | 'auto') => {
         if (saveStatus === 'saving') return;
-
-        setSaveError(null);
-        setSaveStatus('saving');
 
         const parseError = async (response: Response) => {
             try {
@@ -47,6 +52,11 @@ export function TopBar() {
             }
             return `Request failed with status ${response.status}`;
         };
+
+        if (source === 'manual') {
+            setSaveError(null);
+        }
+        setSaveStatus('saving');
 
         try {
             if (projectId) {
@@ -88,6 +98,8 @@ export function TopBar() {
                 router.replace(`/builder?project=${newProjectId}`);
             }
 
+            lastSavedSnapshot.current = stateSnapshot;
+            setIsDirty(false);
             setSaveStatus('saved');
             if (saveResetTimer.current) clearTimeout(saveResetTimer.current);
             saveResetTimer.current = setTimeout(() => setSaveStatus('idle'), 2000);
@@ -97,7 +109,53 @@ export function TopBar() {
             setSaveError(message);
             setSaveStatus('idle');
         }
+    }, [projectId, presentState, router, saveStatus, setProjectId, stateSnapshot, websiteName]);
+
+    const handleSave = async () => {
+        await saveProject('manual');
     };
+
+    // Keep unsaved-state baseline aligned with current loaded project and in-memory edits.
+    useEffect(() => {
+        if (lastSavedSnapshot.current === null) {
+            lastSavedSnapshot.current = stateSnapshot;
+            previousProjectId.current = projectId;
+            setIsDirty(false);
+            return;
+        }
+
+        if (previousProjectId.current !== projectId) {
+            previousProjectId.current = projectId;
+            lastSavedSnapshot.current = stateSnapshot;
+            setIsDirty(false);
+            return;
+        }
+
+        setIsDirty(lastSavedSnapshot.current !== stateSnapshot);
+    }, [projectId, stateSnapshot]);
+
+    // Debounced autosave for unsaved changes.
+    useEffect(() => {
+        if (autoSaveTimer.current) {
+            clearTimeout(autoSaveTimer.current);
+            autoSaveTimer.current = null;
+        }
+
+        if (!isDirty || saveStatus === 'saving') {
+            return;
+        }
+
+        autoSaveTimer.current = setTimeout(() => {
+            void saveProject('auto');
+        }, AUTO_SAVE_DELAY_MS);
+
+        return () => {
+            if (autoSaveTimer.current) {
+                clearTimeout(autoSaveTimer.current);
+                autoSaveTimer.current = null;
+            }
+        };
+    }, [isDirty, projectId, saveProject, saveStatus, stateSnapshot]);
 
     // Close dropdown on outside click
     useEffect(() => {
@@ -110,6 +168,7 @@ export function TopBar() {
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
             if (saveResetTimer.current) clearTimeout(saveResetTimer.current);
+            if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
         };
     }, []);
 
@@ -258,6 +317,11 @@ export function TopBar() {
                 {saveError && (
                     <span className="hidden lg:inline text-xs text-red-400 ml-2 max-w-[220px] truncate" title={saveError}>
                         {saveError}
+                    </span>
+                )}
+                {!saveError && (
+                    <span className={`hidden xl:inline text-xs ml-2 ${isDirty ? 'text-amber-400' : 'text-emerald-400'}`}>
+                        {saveStatus === 'saving' ? 'Saving…' : isDirty ? 'Unsaved changes' : 'All changes saved'}
                     </span>
                 )}
             </div>
