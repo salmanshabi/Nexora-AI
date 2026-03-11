@@ -93,7 +93,8 @@ export async function PATCH(req: Request, context: RouteContext) {
     const supabase = createSupabaseAdminClient();
     const { data, error } = await supabase
       .from("projects")
-      .update(updates)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .update(updates as any)
       .eq("id", projectId)
       .eq("owner_id", userId)
       .select("id, owner_id, name, state, created_at, updated_at")
