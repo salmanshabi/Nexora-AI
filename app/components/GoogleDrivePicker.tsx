@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { loadGoogleApis } from "@/lib/google-drive";
+import { loadGoogleApis } from "@/backend/lib/google-drive";
 import type { Attachment } from "@/types/attachments";
 
 interface GoogleDrivePickerProps {
@@ -106,6 +106,7 @@ export default function GoogleDrivePicker({ isOpen, onClose, onSelect }: GoogleD
   // Trigger picker when isOpen becomes true
   useEffect(() => {
     if (isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       openPicker();
     }
   }, [isOpen, openPicker]);

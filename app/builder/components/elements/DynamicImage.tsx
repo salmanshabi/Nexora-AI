@@ -31,18 +31,22 @@ export function DynamicImage({ element }: { element: ElementNode }) {
             className={`relative overflow-hidden transition-all ${isSelected ? 'ring-2 ring-cyan-400' : 'hover:ring-1 hover:ring-cyan-500/50'}`}
             style={{
                 borderRadius: getRoundness(),
-                width: element.props.fullWidth ? '100%' : 'auto',
+                width: element.props.style?.width || '100%',
+                height: element.props.style?.height || 'auto',
+                minHeight: element.props.url ? undefined : '120px',
                 ...element.props.style,
             }}
         >
             {element.props.url ? (
                 <img
                     src={element.props.url}
-                    alt={element.props.altText || 'Image element'}
+                    alt={element.props.altText || 'Image'}
+                    loading="lazy"
                     style={{
-                        objectFit: element.props.objectFit || 'cover',
+                        objectFit: (element.props.style?.objectFit as React.CSSProperties['objectFit']) || element.props.objectFit || 'cover',
                         width: '100%',
-                        height: '100%' // Usually controlled by parent container aspect ratio
+                        height: element.props.style?.height || '100%',
+                        display: 'block',
                     }}
                 />
             ) : (

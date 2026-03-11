@@ -52,6 +52,7 @@ export default function CameraCapture({ isOpen, onClose, onCapture }: CameraCapt
   // Start/stop camera when modal opens/closes
   useEffect(() => {
     if (isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       startCamera();
     } else {
       stopCamera();

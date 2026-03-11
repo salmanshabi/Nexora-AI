@@ -210,11 +210,11 @@ export default function AttachmentDropdown({
       {isOpen && (
         <motion.div
           ref={dropdownRef}
-          initial={{ opacity: 0, y: 10, scale: 0.95 }}
+          initial={{ opacity: 0, y: -10, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 10, scale: 0.95 }}
+          exit={{ opacity: 0, y: -10, scale: 0.95 }}
           transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
-          className="absolute bottom-full mb-3 left-0 w-72 rounded-2xl border border-gray-700/60 bg-gray-950/95 backdrop-blur-xl shadow-[0_8px_40px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.03)] z-50 overflow-hidden"
+          className="absolute top-full mt-3 left-0 w-72 rounded-2xl border border-gray-700/60 bg-gray-950/95 backdrop-blur-xl shadow-[0_8px_40px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.03)] z-50 overflow-hidden"
         >
           {/* Subtle top gradient accent line */}
           <div className="h-[1px] bg-gradient-to-r from-transparent via-cyan-500/40 to-transparent" />

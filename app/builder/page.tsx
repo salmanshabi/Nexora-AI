@@ -19,19 +19,23 @@ export default function BuilderPage() {
 
     // Ensure we don't render zustand state on the server (Hydration Error protection)
     useEffect(() => {
-        setMounted(true);
-
-        // Intercept template selection from URL on first mount
         const params = new URLSearchParams(window.location.search);
         const templateId = params.get('template');
+
         if (templateId) {
+            // URL has a template — load it directly, skip localStorage restore
             const templateState = getTemplateState(templateId);
             if (templateState) {
                 loadTemplate(templateState);
             }
             // Clear URL to prevent reloading on refresh
             router.replace('/builder');
+        } else {
+            // No template in URL — restore from localStorage if available
+            useBuilderStore.persist.rehydrate();
         }
+
+        setMounted(true);
     }, [router, loadTemplate]);
 
     useEffect(() => {

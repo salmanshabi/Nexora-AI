@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronUp, ChevronDown, Copy, Trash2, Plus } from 'lucide-react';
+import { ChevronUp, ChevronDown, Copy, Trash2, Plus, GripVertical, Lock } from 'lucide-react';
 import { useBuilderStore } from '../../store/useBuilderStore';
 import { ElementRenderer } from '../elements/ElementRenderer';
 import { Section } from '../../store/types';
@@ -17,6 +17,7 @@ interface Props {
 export function SectionRenderer({ section, index, totalSections }: Props) {
     const selectedSectionId = useBuilderStore(state => state.selectedSectionId);
     const setSelectedSection = useBuilderStore(state => state.setSelectedSection);
+    const setSelectedElement = useBuilderStore(state => state.setSelectedElement);
     const tokens = useBuilderStore(state => state.present.tokens);
     const activePageId = useBuilderStore(state => state.activePageId);
     const pages = useBuilderStore(state => state.present.pages);
@@ -30,6 +31,7 @@ export function SectionRenderer({ section, index, totalSections }: Props) {
     const handleClick = (e: React.MouseEvent) => {
         e.stopPropagation();
         setSelectedSection(section.id);
+        setSelectedElement(null);
     };
 
     const moveUp = (e: React.MouseEvent) => {
@@ -79,10 +81,10 @@ export function SectionRenderer({ section, index, totalSections }: Props) {
 
         const gridClass = section.layout.columns?.desktop === 2 ? 'md:grid-cols-2'
             : section.layout.columns?.desktop === 3 ? 'md:grid-cols-3'
-            : section.layout.columns?.desktop === 4 ? 'md:grid-cols-4'
-            : 'grid-cols-1';
+                : section.layout.columns?.desktop === 4 ? 'md:grid-cols-4'
+                    : 'grid-cols-1';
 
-        // UX 3.0 Rendering Path (sections with an elements array)
+        // UX 3.0 Rendering Path
         if (section.elements !== undefined) {
             if (section.elements.length === 0) {
                 return (
@@ -119,61 +121,90 @@ export function SectionRenderer({ section, index, totalSections }: Props) {
 
     return (
         <div
-            className={`relative group transition-all duration-300 border-2 ${isSelected ? 'border-cyan-500 z-10 shadow-[0_0_20px_rgba(34,211,238,0.15)] ring-1 ring-cyan-500/50' : 'border-transparent hover:border-cyan-500/30'} ${section.isLocked ? 'opacity-90' : ''}`}
+            className={`relative group transition-all duration-200 ${isSelected
+                    ? 'ring-2 ring-cyan-500 ring-offset-0 z-10'
+                    : 'hover:ring-1 hover:ring-cyan-500/30'
+                } ${section.isLocked ? 'opacity-90' : ''}`}
             onClick={handleClick}
-            style={{ transform: isSelected ? 'scale(1.002)' : 'scale(1)' }}
         >
-            {/* Locked overlay indicator */}
-            {section.isLocked && (
-                <div className="absolute top-3 left-3 z-20 bg-gray-900/80 backdrop-blur-sm text-yellow-500 p-1.5 rounded-lg shadow-lg border border-gray-700/50" title="This section is locked from AI edits">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+            {/* Wix-style LEFT ACTION BAR — appears on hover or selection */}
+            <div className={`absolute -left-11 top-0 bottom-0 flex flex-col items-center justify-start pt-2 gap-1 z-30 transition-opacity duration-200 ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                }`}>
+                {/* Section type label */}
+                <div className="bg-cyan-500 text-black px-2 py-1 rounded-md text-[9px] font-bold uppercase tracking-widest whitespace-nowrap shadow-lg shadow-cyan-500/20 mb-1">
+                    {section.type}
                 </div>
-            )}
 
-            {/* Hover toolbar — top-right, hidden when locked */}
-            {!section.isLocked && (
-                <div className="absolute top-2 right-2 z-30 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                {/* Drag handle */}
+                {!section.isLocked && (
                     <button
-                        onClick={moveUp}
-                        disabled={index === 0}
-                        title="Move up"
-                        className="p-1.5 rounded bg-gray-900/90 border border-gray-700/60 text-gray-400 hover:text-white hover:border-cyan-500/50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        className="p-1 rounded bg-[#1a1a1a] border border-gray-700/60 text-gray-400 hover:text-white hover:border-cyan-500/50 transition-colors cursor-grab active:cursor-grabbing"
+                        title="Drag to reorder"
+                        onMouseDown={(e) => e.stopPropagation()}
                     >
-                        <ChevronUp size={14} />
+                        <GripVertical size={12} />
                     </button>
-                    <button
-                        onClick={moveDown}
-                        disabled={index === totalSections - 1}
-                        title="Move down"
-                        className="p-1.5 rounded bg-gray-900/90 border border-gray-700/60 text-gray-400 hover:text-white hover:border-cyan-500/50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                    >
-                        <ChevronDown size={14} />
-                    </button>
+                )}
+
+                {/* Move up */}
+                <button
+                    onClick={moveUp}
+                    disabled={index === 0}
+                    title="Move up"
+                    className="p-1 rounded bg-[#1a1a1a] border border-gray-700/60 text-gray-400 hover:text-white hover:border-cyan-500/50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                    <ChevronUp size={12} />
+                </button>
+
+                {/* Move down */}
+                <button
+                    onClick={moveDown}
+                    disabled={index === totalSections - 1}
+                    title="Move down"
+                    className="p-1 rounded bg-[#1a1a1a] border border-gray-700/60 text-gray-400 hover:text-white hover:border-cyan-500/50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                    <ChevronDown size={12} />
+                </button>
+
+                {/* Duplicate */}
+                {!section.isLocked && (
                     <button
                         onClick={duplicate}
                         title="Duplicate section"
-                        className="p-1.5 rounded bg-gray-900/90 border border-gray-700/60 text-gray-400 hover:text-white hover:border-cyan-500/50 transition-colors"
+                        className="p-1 rounded bg-[#1a1a1a] border border-gray-700/60 text-gray-400 hover:text-white hover:border-cyan-500/50 transition-colors"
                     >
-                        <Copy size={14} />
+                        <Copy size={12} />
                     </button>
+                )}
+
+                {/* Delete */}
+                {!section.isLocked && (
                     <button
                         onClick={deleteSelf}
                         title="Delete section"
-                        className="p-1.5 rounded bg-gray-900/90 border border-gray-700/60 text-gray-400 hover:text-red-400 hover:border-red-500/50 transition-colors"
+                        className="p-1 rounded bg-[#1a1a1a] border border-gray-700/60 text-gray-400 hover:text-red-400 hover:border-red-500/50 transition-colors"
                     >
-                        <Trash2 size={14} />
+                        <Trash2 size={12} />
                     </button>
-                </div>
-            )}
+                )}
 
-            {/* Contextual hover badge */}
-            {!isSelected && (
-                <div className="absolute top-0 right-1/2 translate-x-1/2 -translate-y-1/2 bg-cyan-950/80 backdrop-blur-md px-3 py-1 rounded-full opacity-0 group-hover:opacity-100 transition-all z-20 shadow-xl border border-cyan-500/30 font-mono text-[10px] text-cyan-300 font-bold uppercase tracking-widest pointer-events-none">
-                    {section.type}
-                </div>
-            )}
+                {/* Lock indicator */}
+                {section.isLocked && (
+                    <div className="p-1 rounded bg-[#1a1a1a] border border-yellow-600/50 text-yellow-500" title="Section is locked from AI edits">
+                        <Lock size={12} />
+                    </div>
+                )}
+            </div>
 
+            {/* Section content */}
             {renderBlock()}
+
+            {/* Selection outline glow effect */}
+            {isSelected && (
+                <div className="absolute inset-0 pointer-events-none">
+                    <div className="absolute inset-0 ring-2 ring-cyan-500/20 rounded-sm" />
+                </div>
+            )}
         </div>
     );
 }

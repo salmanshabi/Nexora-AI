@@ -95,6 +95,7 @@ export default function AttachmentPreview({ attachments, onRemove }: AttachmentP
               {/* Thumbnail or icon */}
               {file.preview ? (
                 <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-lg border border-gray-700/30">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={file.preview}
                     alt={file.name}

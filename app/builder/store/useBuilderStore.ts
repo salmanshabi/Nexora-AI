@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 import { AppStateSnapshot, DesignTokens, PageData, Section, ElementProps, ElementNode } from './types';
 
@@ -17,10 +18,12 @@ export interface BuilderState {
     leftPanelTab: 'pages' | 'layers' | 'add';
     inspectorTab: 'structure' | 'style' | 'content' | 'animate' | 'ai';
     device: 'desktop' | 'tablet' | 'mobile';
+    canvasZoom: number; // 0.5 to 2.0
 
     setLeftPanelTab: (tab: 'pages' | 'layers' | 'add') => void;
     setInspectorTab: (tab: 'structure' | 'style' | 'content' | 'animate' | 'ai') => void;
     setDevice: (device: 'desktop' | 'tablet' | 'mobile') => void;
+    setCanvasZoom: (zoom: number) => void;
 
     // View Actions
     setActivePage: (pageId: string) => void;
@@ -48,6 +51,8 @@ export interface BuilderState {
     removeSection: (pageId: string, sectionId: string) => void;
     reorderSections: (pageId: string, newSections: Section[]) => void;
     updateElement: (pageId: string, sectionId: string, elementId: string, updates: Partial<ElementProps>) => void;
+    deleteElement: (pageId: string, sectionId: string, elementId: string) => void;
+    duplicateElement: (pageId: string, sectionId: string, elementId: string) => void;
 }
 
 // --- DEFAULT STATE ---
@@ -145,7 +150,7 @@ const saveToHistory = (state: BuilderState, newState: AppStateSnapshot): Partial
 
 // --- STORE ---
 
-export const useBuilderStore = create<BuilderState>((set) => ({
+export const useBuilderStore = create<BuilderState>()(persist((set) => ({
     past: [],
     present: initialState,
     future: [],
@@ -157,10 +162,12 @@ export const useBuilderStore = create<BuilderState>((set) => ({
     leftPanelTab: 'layers',
     inspectorTab: 'structure',
     device: 'desktop',
+    canvasZoom: 1,
 
     setLeftPanelTab: (tab) => set({ leftPanelTab: tab }),
     setInspectorTab: (tab) => set({ inspectorTab: tab }),
     setDevice: (device) => set({ device }),
+    setCanvasZoom: (zoom) => set({ canvasZoom: Math.min(2, Math.max(0.5, zoom)) }),
 
     loadTemplate: (templateState) => set((state) => {
         const nextState = { ...state.present, ...templateState };
@@ -324,4 +331,79 @@ export const useBuilderStore = create<BuilderState>((set) => ({
         return saveToHistory(state, newState);
     }),
 
-}));
+    deleteElement: (pageId, sectionId, elementId) => set((state) => {
+        const removeFromTree = (nodes: ElementNode[]): ElementNode[] => {
+            return nodes.filter(n => n.id !== elementId).map(n => {
+                if (n.children) return { ...n, children: removeFromTree(n.children) };
+                return n;
+            });
+        };
+        const newState = {
+            ...state.present,
+            pages: state.present.pages.map(p => {
+                if (p.id !== pageId) return p;
+                return {
+                    ...p,
+                    sections: p.sections.map(s => {
+                        if (s.id !== sectionId || !s.elements) return s;
+                        return { ...s, elements: removeFromTree(s.elements) };
+                    })
+                };
+            })
+        };
+        return { ...saveToHistory(state, newState), selectedElementId: null };
+    }),
+
+    duplicateElement: (pageId, sectionId, elementId) => set((state) => {
+        const cloneWithNewIds = (node: ElementNode): ElementNode => {
+            const newId = `${node.type.toLowerCase()}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+            return {
+                ...node,
+                id: newId,
+                children: node.children?.map(cloneWithNewIds),
+            };
+        };
+        const duplicateInTree = (nodes: ElementNode[]): ElementNode[] => {
+            const result: ElementNode[] = [];
+            for (const n of nodes) {
+                result.push(n);
+                if (n.id === elementId) {
+                    result.push(cloneWithNewIds(n));
+                } else if (n.children) {
+                    // Still need to check children
+                    const updated = duplicateInTree(n.children);
+                    if (updated !== n.children) {
+                        result[result.length - 1] = { ...n, children: updated };
+                    }
+                }
+            }
+            return result;
+        };
+        const newState = {
+            ...state.present,
+            pages: state.present.pages.map(p => {
+                if (p.id !== pageId) return p;
+                return {
+                    ...p,
+                    sections: p.sections.map(s => {
+                        if (s.id !== sectionId || !s.elements) return s;
+                        return { ...s, elements: duplicateInTree(s.elements) };
+                    })
+                };
+            })
+        };
+        return saveToHistory(state, newState);
+    }),
+
+}),
+    {
+        name: 'nexora-builder-state',
+        skipHydration: true,
+        partialize: (state: BuilderState) => ({
+            present: state.present,
+            activePageId: state.activePageId,
+            device: state.device,
+            canvasZoom: state.canvasZoom,
+        }),
+    }
+));

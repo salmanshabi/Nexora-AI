@@ -1,123 +1,54 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
+import { LayoutTemplate, Sparkles, Code2 } from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import type { Attachment } from "@/types/attachments";
 import AttachmentDropdown from "@/app/components/AttachmentDropdown";
 import AttachmentPreview from "@/app/components/AttachmentPreview";
 import CameraCapture from "@/app/components/CameraCapture";
 import UrlInput from "@/app/components/UrlInput";
 import GoogleDrivePicker from "@/app/components/GoogleDrivePicker";
+import AnimatedBackground from "@/app/components/AnimatedBackground";
+import { useLanguage } from "@/app/context/LanguageContext";
+import { translations } from "@/app/translations";
 
-const tags = [
-  {
-    label: "Portfolio",
-    icon: "🖼️",
-    prompts: [
-      "A modern portfolio website for a photographer with a dark theme, full-screen gallery, and contact form",
-      "A creative portfolio for a graphic designer with animated transitions, case studies, and a minimal layout",
-      "A freelance developer portfolio with project showcases, tech stack badges, testimonials, and a blog section",
-      "An artist portfolio with a masonry grid gallery, about page, exhibition timeline, and commission request form",
-    ],
-  },
-  {
-    label: "Landing Page",
-    icon: "🚀",
-    prompts: [
-      "A sleek landing page for a tech startup with a hero section, feature highlights, pricing table, and signup form",
-      "A product launch page for a fitness app with app screenshots, user reviews, download buttons, and a FAQ section",
-      "A coming soon page for a new AI tool with an email waitlist, countdown timer, and feature preview cards",
-      "A landing page for an online course platform with instructor bios, curriculum overview, and enrollment CTA",
-    ],
-  },
-  {
-    label: "Online Store",
-    icon: "🛒",
-    prompts: [
-      "An online store for handmade jewelry with product grids, shopping cart, filters, and a clean checkout flow",
-      "A streetwear clothing shop with lookbook gallery, size guide, wishlist feature, and new arrivals section",
-      "A specialty coffee store with subscription plans, product reviews, brewing guides, and gift card options",
-      "A vintage furniture store with category filters, room inspiration gallery, delivery info, and customer stories",
-    ],
-  },
-  {
-    label: "Blog",
-    icon: "✍️",
-    prompts: [
-      "A minimal blog for a travel writer with featured posts, categories, dark mode, and a newsletter signup",
-      "A tech blog with syntax-highlighted code snippets, author profiles, reading time estimates, and search functionality",
-      "A food blog with recipe cards, ingredient lists, cooking time filters, and a print-friendly layout",
-      "A personal journal blog with mood-based tags, photo entries, archive calendar, and a clean reading experience",
-    ],
-  },
-  {
-    label: "Restaurant",
-    icon: "🍽️",
-    prompts: [
-      "A restaurant website with a hero image, interactive menu, reservation booking, and customer reviews",
-      "A sushi bar website with a visual menu, chef's story section, online ordering, and Instagram feed integration",
-      "A pizza delivery site with a build-your-own pizza tool, combo deals, live order tracking, and loyalty rewards",
-      "A fine dining website with tasting menu previews, wine pairing suggestions, private event booking, and a virtual tour",
-    ],
-  },
-];
+const tagPrompts: Record<string, string[]> = {
+  Portfolio: [
+    "A modern portfolio website for a photographer with a dark theme, full-screen gallery, and contact form",
+    "A creative portfolio for a graphic designer with animated transitions, case studies, and a minimal layout",
+    "A freelance developer portfolio with project showcases, tech stack badges, testimonials, and a blog section",
+    "An artist portfolio with a masonry grid gallery, about page, exhibition timeline, and commission request form",
+  ],
+  "Landing Page": [
+    "A sleek landing page for a tech startup with a hero section, feature highlights, pricing table, and signup form",
+    "A product launch page for a fitness app with app screenshots, user reviews, download buttons, and a FAQ section",
+    "A coming soon page for a new AI tool with an email waitlist, countdown timer, and feature preview cards",
+    "A landing page for an online course platform with instructor bios, curriculum overview, and enrollment CTA",
+  ],
+  "Online Store": [
+    "An online store for handmade jewelry with product grids, shopping cart, filters, and a clean checkout flow",
+    "A streetwear clothing shop with lookbook gallery, size guide, wishlist feature, and new arrivals section",
+    "A specialty coffee store with subscription plans, product reviews, brewing guides, and gift card options",
+    "A vintage furniture store with category filters, room inspiration gallery, delivery info, and customer stories",
+  ],
+  Blog: [
+    "A minimal blog for a travel writer with featured posts, categories, dark mode, and a newsletter signup",
+    "A tech blog with syntax-highlighted code snippets, author profiles, reading time estimates, and search functionality",
+    "A food blog with recipe cards, ingredient lists, cooking time filters, and a print-friendly layout",
+    "A personal journal blog with mood-based tags, photo entries, archive calendar, and a clean reading experience",
+  ],
+  Restaurant: [
+    "A restaurant website with a hero image, interactive menu, reservation booking, and customer reviews",
+    "A sushi bar website with a visual menu, chef's story section, online ordering, and Instagram feed integration",
+    "A pizza delivery site with a build-your-own pizza tool, combo deals, live order tracking, and loyalty rewards",
+    "A fine dining website with tasting menu previews, wine pairing suggestions, private event booking, and a virtual tour",
+  ],
+};
 
-const questions = [
-  {
-    id: "businessName",
-    question: "What is your business or project name?",
-    placeholder: "e.g. Bloom Studio",
-  },
-  {
-    id: "businessDescription",
-    question: "Describe your business in a few words",
-    placeholder: "e.g. A boutique coffee shop in downtown Austin specializing in single-origin beans",
-    textarea: true,
-  },
-  {
-    id: "audienceGender",
-    question: "Who is your target audience?",
-    subtitle: "Select all that apply",
-    options: ["Men", "Women", "Teens", "Children", "Elderly", "Everyone"],
-    multi: true,
-  },
-  {
-    id: "audienceAge",
-    question: "What age range are you targeting?",
-    options: ["Under 18", "18–24", "25–34", "35–44", "45–54", "55+", "All Ages"],
-    multi: true,
-  },
-  {
-    id: "style",
-    question: "What style or vibe do you want?",
-    options: ["Minimal", "Bold", "Elegant", "Playful", "Corporate", "Futuristic"],
-  },
-  {
-    id: "colors",
-    question: "Pick a color palette",
-    colorPalette: true,
-    options: [
-      "Ocean",
-      "Sunset",
-      "Forest",
-      "Midnight",
-      "Berry",
-      "Minimal",
-      "Warm",
-      "Neon",
-      "Earth",
-      "Pastel",
-      "Monochrome",
-      "Candy",
-    ],
-  },
-  {
-    id: "pages",
-    question: "What pages do you need?",
-    options: ["Home", "About", "Pricing", "Contact", "Blog", "Gallery", "Shop", "FAQ"],
-    multi: true,
-  },
-];
+const tagKeys = ["Portfolio", "Landing Page", "Online Store", "Blog", "Restaurant"];
 
 const paletteMap: Record<string, [string, string, string]> = {
   Ocean: ["#0ea5e9", "#06b6d4", "#1e3a5f"],
@@ -134,99 +65,17 @@ const paletteMap: Record<string, [string, string, string]> = {
   Candy: ["#f472b6", "#c084fc", "#67e8f9"],
 };
 
-// Smart analyzer: pre-fills questionnaire based on business description
-function analyzeDescription(desc: string): Record<string, string> {
-  const d = desc.toLowerCase();
-  const result: Record<string, string> = {};
-
-  // --- Audience Gender ---
-  const genderKeywords: Record<string, string[]> = {
-    Men: ["men", "male", "gentleman", "barber", "grooming", "menswear"],
-    Women: ["women", "female", "lady", "salon", "beauty", "bridal", "maternity", "womenswear"],
-    Teens: ["teen", "youth", "young", "student", "college", "university", "gen z"],
-    Children: ["kid", "child", "baby", "toddler", "nursery", "daycare", "toy", "playground"],
-    Elderly: ["senior", "elderly", "retire", "aged care", "nursing home"],
-  };
-  const matchedGenders: string[] = [];
-  for (const [gender, keywords] of Object.entries(genderKeywords)) {
-    if (keywords.some((kw) => d.includes(kw))) matchedGenders.push(gender);
-  }
-  result.audienceGender = matchedGenders.length > 0 ? matchedGenders.join(", ") : "Everyone";
-
-  // --- Audience Age ---
-  const ageKeywords: Record<string, string[]> = {
-    "Under 18": ["kid", "child", "teen", "school", "toy", "baby", "toddler"],
-    "18–24": ["college", "university", "student", "gen z", "young adult"],
-    "25–34": ["startup", "freelanc", "young professional", "millennial"],
-    "35–44": ["family", "parent", "mid-career", "corporate"],
-    "45–54": ["executive", "senior professional", "established"],
-    "55+": ["senior", "retire", "elderly", "aged"],
-  };
-  const matchedAges: string[] = [];
-  for (const [age, keywords] of Object.entries(ageKeywords)) {
-    if (keywords.some((kw) => d.includes(kw))) matchedAges.push(age);
-  }
-  result.audienceAge = matchedAges.length > 0 ? matchedAges.join(", ") : "All Ages";
-
-  // --- Style ---
-  if (/luxur|premium|high.?end|fine dining|boutique|exclusive/i.test(d)) result.style = "Elegant";
-  else if (/tech|ai|software|saas|app|digital|cyber|crypto/i.test(d)) result.style = "Futuristic";
-  else if (/fun|game|party|play|entertainment|comic|cartoon/i.test(d)) result.style = "Playful";
-  else if (/bold|extreme|sport|adventure|fitness|gym|street/i.test(d)) result.style = "Bold";
-  else if (/law|finance|consult|accounting|insurance|enterprise|corporate/i.test(d)) result.style = "Corporate";
-  else result.style = "Minimal";
-
-  // --- Colors ---
-  if (/nature|garden|organic|farm|plant|eco|vegan|green/i.test(d)) result.colors = "Forest";
-  else if (/ocean|sea|marine|aqua|surf|beach|water|swim/i.test(d)) result.colors = "Ocean";
-  else if (/luxur|premium|elegant|fine|wine|gold/i.test(d)) result.colors = "Midnight";
-  else if (/tech|ai|software|saas|cyber|neon|digital/i.test(d)) result.colors = "Neon";
-  else if (/kid|child|baby|toy|candy|sweet|dessert|bakery|cake/i.test(d)) result.colors = "Candy";
-  else if (/coffee|wood|leather|vintage|rustic|craft/i.test(d)) result.colors = "Earth";
-  else if (/beauty|salon|spa|wellness|yoga|pastel/i.test(d)) result.colors = "Pastel";
-  else if (/food|restaurant|pizza|burger|bbq|grill|spice/i.test(d)) result.colors = "Warm";
-  else if (/fashion|model|photo|art|creative|design/i.test(d)) result.colors = "Berry";
-  else if (/clean|minimal|simple|modern|agency/i.test(d)) result.colors = "Monochrome";
-  else result.colors = "Minimal";
-
-  // --- Pages ---
-  const pageKeywords: Record<string, string[]> = {
-    Home: ["home"],
-    About: ["about", "story", "team", "who we are"],
-    Pricing: ["pricing", "price", "plan", "subscription", "package", "cost"],
-    Contact: ["contact", "reach", "support", "help"],
-    Blog: ["blog", "article", "news", "post", "journal", "write"],
-    Gallery: ["gallery", "portfolio", "photo", "image", "work", "project", "showcase"],
-    Shop: ["shop", "store", "buy", "product", "ecommerce", "e-commerce", "sell", "order", "cart"],
-    FAQ: ["faq", "question", "help", "support"],
-  };
-  const matchedPages = ["Home"]; // Always include Home
-  for (const [page, keywords] of Object.entries(pageKeywords)) {
-    if (page === "Home") continue;
-    if (keywords.some((kw) => d.includes(kw))) matchedPages.push(page);
-  }
-  // Smart defaults: always add About & Contact if nothing specific was found
-  if (matchedPages.length <= 1) {
-    matchedPages.push("About", "Contact");
-    // Add Shop if it's a store
-    if (/store|shop|sell|product|ecommerce/i.test(d)) matchedPages.push("Shop", "Pricing");
-    // Add Gallery if creative
-    if (/photo|portfolio|art|design|architect/i.test(d)) matchedPages.push("Gallery");
-    // Add Blog if content-focused
-    if (/blog|write|journal|news/i.test(d)) matchedPages.push("Blog");
-    // Add Pricing if service-based
-    if (/service|agency|consult|freelanc|plan/i.test(d)) matchedPages.push("Pricing");
-  }
-  // Deduplicate
-  result.pages = [...new Set(matchedPages)].join(", ");
-
-  return result;
-}
-
 export default function Home() {
+  const router = useRouter();
+  const { status } = useSession();
+  const { lang } = useLanguage();
+  const t = translations[lang].home;
+  const questions = t.questions as any;
+
   const [promptText, setPromptText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
-  const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+
   const [showQuestions, setShowQuestions] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -337,6 +186,11 @@ export default function Home() {
   });
 
   const handleGenerate = () => {
+    if (status === "unauthenticated") {
+      router.push("/sign-up");
+      return;
+    }
+
     if (!promptText.trim() || isBarAnalyzing) return;
 
     setIsBarAnalyzing(true);
@@ -349,19 +203,19 @@ export default function Home() {
     const hasCamera = attachments.some((a) => a.source === "camera");
 
     const messages = [
-      "Reading your description...",
-      ...(hasImages ? ["Analyzing uploaded images..."] : []),
-      ...(hasCamera ? ["Processing camera captures..."] : []),
-      ...(hasDocs ? ["Scanning attached documents..."] : []),
-      ...(hasUrls ? ["Extracting insights from linked pages..."] : []),
-      ...(hasGDrive ? ["Reading Google Drive files..."] : []),
-      ...(hasFiles ? ["Extracting insights from files..."] : []),
-      "Understanding your vision...",
-      "Identifying target audience...",
-      "Choosing the perfect style...",
-      "Selecting color palette...",
-      "Mapping out your pages...",
-      "Preparing your questionnaire...",
+      t.messages.readingDescription,
+      ...(hasImages ? [t.messages.analyzingImages] : []),
+      ...(hasCamera ? [t.messages.processingCamera] : []),
+      ...(hasDocs ? [t.messages.scanningDocs] : []),
+      ...(hasUrls ? [t.messages.extractingInsights] : []),
+      ...(hasGDrive ? [t.messages.readingGDrive] : []),
+      ...(hasFiles ? [t.messages.extractingFiles] : []),
+      t.messages.understandingVision,
+      t.messages.identifyingAudience,
+      t.messages.choosingStyle,
+      t.messages.selectingPalette,
+      t.messages.mappingPages,
+      t.messages.preparingQuestionnaire,
     ];
 
     let msgIndex = 0;
@@ -374,25 +228,42 @@ export default function Home() {
     }, 800);
 
     const delay = 5000 + Math.random() * 2000;
-    analyzeTimer.current = setTimeout(() => {
+    analyzeTimer.current = setTimeout(async () => {
       clearInterval(msgInterval);
 
-      // Run AI analyzer on the prompt bar text to pre-fill answers
-      const suggested = analyzeDescription(promptText);
-      const prefilledKeys = new Set<string>();
-      const prefilled: Record<string, string> = {};
-      for (const [key, value] of Object.entries(suggested)) {
-        prefilled[key] = value;
-        prefilledKeys.add(key);
-      }
+      try {
+        const response = await fetch("/api/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ description: promptText, language: lang }),
+        });
 
-      setIsBarAnalyzing(false);
-      setBarAnalyzeMessage("");
-      setShowQuestions(true);
-      setCurrentStep(0);
-      setAnswers(prefilled);
-      setSelectedMulti([]);
-      setAiPrefilled(prefilledKeys);
+        const suggested = await response.json();
+
+        const prefilledKeys = new Set<string>();
+        const prefilled: Record<string, string> = {};
+        for (const [key, value] of Object.entries(suggested)) {
+          if (typeof value === "string") {
+            prefilled[key] = value;
+            prefilledKeys.add(key);
+          }
+        }
+
+        setIsBarAnalyzing(false);
+        setBarAnalyzeMessage("");
+        setShowQuestions(true);
+        setCurrentStep(0);
+        setAnswers(prefilled);
+        setSelectedMulti([]);
+        setAiPrefilled(prefilledKeys);
+      } catch (error) {
+        console.error("Failed to get initial analysis:", error);
+        // Fallback or error state handling could go here
+        setIsBarAnalyzing(false);
+        setBarAnalyzeMessage("");
+        setShowQuestions(true);
+        setCurrentStep(0);
+      }
     }, delay);
   };
 
@@ -408,9 +279,20 @@ export default function Home() {
       }
       setCurrentStep(nextStep);
     } else {
+      // Setup generator loading state
+      setIsGenerating(true);
       setShowQuestions(false);
+
+      // Save data for the builder page
+      localStorage.setItem("nexora_builder_state", JSON.stringify(updatedAnswers));
+      localStorage.setItem("nexora_prompt", promptText);
+
+      // Simulate website generation delay before routing
+      setTimeout(() => {
+        router.push("/builder");
+      }, 4000);
     }
-  }, []);
+  }, [promptText, router]);
 
   const handleNext = () => {
     if (!canAdvance()) return;
@@ -425,13 +307,13 @@ export default function Home() {
       setIsAnalyzing(true);
 
       const messages = [
-        "Reading your description...",
-        "Understanding your business...",
-        "Identifying target audience...",
-        "Choosing the perfect style...",
-        "Selecting color palette...",
-        "Mapping out your pages...",
-        "Finalizing suggestions...",
+        t.messages.readingDescription,
+        t.messages.understandingBusiness,
+        t.messages.identifyingAudience,
+        t.messages.choosingStyle,
+        t.messages.selectingPalette,
+        t.messages.mappingPages,
+        t.messages.finalizingSuggestions,
       ];
 
       // Cycle through messages
@@ -444,26 +326,37 @@ export default function Home() {
         }
       }, 800);
 
-      // Random delay between 5-7 seconds
       const delay = 5000 + Math.random() * 2000;
-      analyzeTimer.current = setTimeout(() => {
+      analyzeTimer.current = setTimeout(async () => {
         clearInterval(msgInterval);
 
-        // Combine prompt bar text + business description for better analysis
         const combinedText = `${promptText} ${updatedAnswers.businessDescription}`;
-        const suggested = analyzeDescription(combinedText);
-        const newPrefilled = new Set(aiPrefilled);
-        for (const [key, value] of Object.entries(suggested)) {
-          if (!updatedAnswers[key] || aiPrefilled.has(key)) {
-            updatedAnswers = { ...updatedAnswers, [key]: value };
-            newPrefilled.add(key);
+        try {
+          const response = await fetch("/api/analyze", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ description: combinedText, language: lang }),
+          });
+
+          const suggested = await response.json();
+          const newPrefilled = new Set(aiPrefilled);
+          for (const [key, value] of Object.entries(suggested)) {
+            if (!updatedAnswers[key] || aiPrefilled.has(key)) {
+              if (typeof value === "string") {
+                updatedAnswers = { ...updatedAnswers, [key]: value };
+                newPrefilled.add(key);
+              }
+            }
           }
+          setAnswers(updatedAnswers);
+          setAiPrefilled(newPrefilled);
+        } catch (error) {
+          console.error("Failed to re-analyze during flow:", error);
+        } finally {
+          setIsAnalyzing(false);
+          setAnalyzeMessage("");
+          goToNextStep(currentStep, updatedAnswers);
         }
-        setAnswers(updatedAnswers);
-        setAiPrefilled(newPrefilled);
-        setIsAnalyzing(false);
-        setAnalyzeMessage("");
-        goToNextStep(currentStep, updatedAnswers);
       }, delay);
 
       return;
@@ -537,16 +430,17 @@ export default function Home() {
   const currentQuestion = questions[currentStep];
 
   return (
-    <div className="flex min-h-screen flex-col bg-gray-950">
+    <div className="flex min-h-screen flex-col relative overflow-hidden">
+      <AnimatedBackground />
       {/* Hero Section */}
-      <section className="flex flex-col items-center justify-center px-8 py-32 text-center">
+      <section className="relative z-10 flex flex-col items-center justify-center px-8 py-32 text-center h-full min-h-screen">
         <motion.h1
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
           className="text-6xl font-bold text-white"
         >
-          Build websites with AI.{" "}
+          {t.headline}{" "}
           <span className="text-cyan-400 drop-shadow-[0_0_20px_rgba(34,211,238,0.5)]">
             Nexora
           </span>
@@ -558,42 +452,20 @@ export default function Home() {
           transition={{ duration: 0.4, delay: 0.15 }}
           className="mt-6 max-w-lg text-xl text-gray-400"
         >
-          Describe your dream website and let AI build it for you in seconds.
-          No coding required. Just your imagination.
+          {t.subtitle}
         </motion.p>
-
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.3 }}
-          className="mt-10 flex gap-4"
-        >
-          <a
-            href="/sign-in"
-            className="rounded-lg bg-cyan-500 px-6 py-3 font-semibold text-black hover:bg-cyan-400 hover:shadow-[0_0_20px_rgba(34,211,238,0.4)] transition-all duration-200"
-          >
-            Get Started Free
-          </a>
-          <a
-            href="/about"
-            className="rounded-lg border border-gray-700 px-6 py-3 text-gray-300 hover:border-cyan-500 hover:text-cyan-400 transition-all duration-200"
-          >
-            Learn More
-          </a>
-        </motion.div>
 
         {/* AI Prompt Bar */}
         <motion.div
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.45 }}
-          className="mt-14 w-full max-w-4xl px-4"
+          transition={{ duration: 0.4, delay: 0.3 }}
+          className="mt-10 w-full max-w-5xl px-4"
         >
-          <div className={`relative rounded-2xl border bg-gray-900 p-2 transition-all duration-300 ${
-            isBarAnalyzing
-              ? "border-cyan-500/50 shadow-[0_0_30px_rgba(34,211,238,0.15)]"
-              : "border-gray-700 focus-within:border-cyan-500/50 focus-within:shadow-[0_0_30px_rgba(34,211,238,0.1)]"
-          }`}>
+          <div className={`relative rounded-2xl border bg-gray-900 p-4 transition-all duration-300 ${isBarAnalyzing
+            ? "border-cyan-500/50 shadow-[0_0_30px_rgba(34,211,238,0.15)]"
+            : "border-gray-700 focus-within:border-cyan-500/50 focus-within:shadow-[0_0_30px_rgba(34,211,238,0.1)]"
+            }`}>
             {isBarAnalyzing ? (
               <div className="flex flex-col items-center justify-center py-6 px-5">
                 <div className="flex items-center gap-4">
@@ -613,7 +485,7 @@ export default function Home() {
                       transition={{ duration: 1.5, repeat: Infinity }}
                       className="text-sm font-semibold text-white"
                     >
-                      Analyzing your description
+                      {t.analyzingDescription}
                     </motion.span>
                     <AnimatePresence mode="wait">
                       <motion.span
@@ -653,139 +525,119 @@ export default function Home() {
                 </div>
               </div>
             ) : (
-            <div
-              onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
-              onDrop={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleFileSelect(e.dataTransfer.files);
-              }}
-            >
-              {/* Attached files preview */}
-              <AttachmentPreview attachments={attachments} onRemove={removeAttachment} />
-
-              {/* URL input bar (shown when URL option is selected) */}
-              <UrlInput
-                isOpen={showUrlInput}
-                onClose={() => setShowUrlInput(false)}
-                onAttach={(attachment) => {
-                  setAttachments((prev) => [...prev, attachment]);
-                  setShowUrlInput(false);
+              <div
+                onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleFileSelect(e.dataTransfer.files);
                 }}
-              />
+              >
+                {/* Attached files preview */}
+                <AttachmentPreview attachments={attachments} onRemove={removeAttachment} />
 
-              {/* Hidden file inputs — separate for photos vs documents */}
-              <input
-                ref={imageInputRef}
-                type="file"
-                multiple
-                accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml"
-                onChange={(e) => {
-                  handleFileSelect(e.target.files, ["image/png", "image/jpeg", "image/gif", "image/webp", "image/svg+xml"]);
-                  e.target.value = "";
-                }}
-                className="hidden"
-              />
-              <input
-                ref={docInputRef}
-                type="file"
-                multiple
-                accept=".pdf,.doc,.docx,.txt,.csv"
-                onChange={(e) => {
-                  handleFileSelect(e.target.files);
-                  e.target.value = "";
-                }}
-                className="hidden"
-              />
-
-              <div className="flex items-end gap-3 px-5 py-3">
-                {/* Attachment dropdown button + menu (left side) */}
-                <div className="relative">
-                  <button
-                    ref={attachBtnRef}
-                    onClick={() => setShowAttachDropdown((prev) => !prev)}
-                    className={`mb-1 shrink-0 flex h-10 w-10 items-center justify-center rounded-full border transition-all duration-300 ${
-                      showAttachDropdown
-                        ? "border-cyan-400/60 text-cyan-300 bg-cyan-500/15 shadow-[0_0_16px_rgba(34,211,238,0.25),inset_0_0_8px_rgba(34,211,238,0.1)]"
-                        : "border-gray-600/50 text-gray-400 bg-gray-800/60 hover:border-cyan-500/40 hover:text-cyan-400 hover:bg-cyan-500/5 hover:shadow-[0_0_12px_rgba(34,211,238,0.15)]"
-                    }`}
-                    title="Attach files, photos, or links"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={`h-4.5 w-4.5 transition-transform duration-300 ease-out ${showAttachDropdown ? "rotate-45" : ""}`}>
-                      <path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" />
-                    </svg>
-                  </button>
-                  <AttachmentDropdown
-                    isOpen={showAttachDropdown}
-                    onClose={() => setShowAttachDropdown(false)}
-                    onSelectPhoto={() => imageInputRef.current?.click()}
-                    onSelectFile={() => docInputRef.current?.click()}
-                    onSelectGDrive={() => setShowGDrive(true)}
-                    onSelectUrl={() => setShowUrlInput(true)}
-                    onSelectCamera={() => setShowCamera(true)}
-                    buttonRef={attachBtnRef}
-                  />
-                </div>
-
-                {/* Sparkle icon */}
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  className="mb-1 h-6 w-6 shrink-0 text-cyan-400"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z"
-                  />
-                </svg>
-
-                <textarea
-                  ref={textareaRef}
-                  rows={2}
-                  value={promptText}
-                  onChange={(e) => {
-                    if (!isTyping) setPromptText(e.target.value);
+                {/* URL input bar (shown when URL option is selected) */}
+                <UrlInput
+                  isOpen={showUrlInput}
+                  onClose={() => setShowUrlInput(false)}
+                  onAttach={(attachment) => {
+                    setAttachments((prev) => [...prev, attachment]);
+                    setShowUrlInput(false);
                   }}
-                  placeholder="Describe your website...&#10;e.g. &quot;A portfolio for a photographer with a dark theme and gallery section&quot;"
-                  className="w-full resize-none bg-transparent text-base text-white placeholder-gray-500 outline-none leading-relaxed"
                 />
 
-                <button
-                  onClick={handleGenerate}
-                  className="mb-1 shrink-0 rounded-xl bg-cyan-500 px-6 py-2.5 text-sm font-semibold text-black hover:bg-cyan-400 hover:shadow-[0_0_20px_rgba(34,211,238,0.3)] transition-all duration-200"
-                >
-                  Generate
-                </button>
+                {/* Hidden file inputs — separate for photos vs documents */}
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  multiple
+                  accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml"
+                  onChange={(e) => {
+                    handleFileSelect(e.target.files, ["image/png", "image/jpeg", "image/gif", "image/webp", "image/svg+xml"]);
+                    e.target.value = "";
+                  }}
+                  className="hidden"
+                />
+                <input
+                  ref={docInputRef}
+                  type="file"
+                  multiple
+                  accept=".pdf,.doc,.docx,.txt,.csv"
+                  onChange={(e) => {
+                    handleFileSelect(e.target.files);
+                    e.target.value = "";
+                  }}
+                  className="hidden"
+                />
+
+                <div className="flex items-end gap-3 px-5 py-3">
+                  {/* Attachment dropdown button + menu (left side) */}
+                  <div className="relative">
+                    <button
+                      ref={attachBtnRef}
+                      onClick={() => setShowAttachDropdown((prev) => !prev)}
+                      className={`mb-1 shrink-0 flex h-10 w-10 items-center justify-center rounded-full border transition-all duration-300 ${showAttachDropdown
+                        ? "border-cyan-400/60 text-cyan-300 bg-cyan-500/15 shadow-[0_0_16px_rgba(34,211,238,0.25),inset_0_0_8px_rgba(34,211,238,0.1)]"
+                        : "border-gray-600/50 text-gray-400 bg-gray-800/60 hover:border-cyan-500/40 hover:text-cyan-400 hover:bg-cyan-500/5 hover:shadow-[0_0_12px_rgba(34,211,238,0.15)]"
+                        }`}
+                      title="Attach files, photos, or links"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={`h-4.5 w-4.5 transition-transform duration-300 ease-out ${showAttachDropdown ? "rotate-45" : ""}`}>
+                        <path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" />
+                      </svg>
+                    </button>
+                    <AttachmentDropdown
+                      isOpen={showAttachDropdown}
+                      onClose={() => setShowAttachDropdown(false)}
+                      onSelectPhoto={() => imageInputRef.current?.click()}
+                      onSelectFile={() => docInputRef.current?.click()}
+                      onSelectGDrive={() => setShowGDrive(true)}
+                      onSelectUrl={() => setShowUrlInput(true)}
+                      onSelectCamera={() => setShowCamera(true)}
+                      buttonRef={attachBtnRef}
+                    />
+                  </div>
+
+                  <textarea
+                    ref={textareaRef}
+                    rows={3}
+                    value={promptText}
+                    onChange={(e) => {
+                      if (!isTyping) setPromptText(e.target.value);
+                    }}
+                    placeholder={t.placeholder}
+                    className="w-full resize-none bg-transparent text-base text-white placeholder-gray-500 outline-none leading-relaxed"
+                  />
+
+                  <button
+                    onClick={handleGenerate}
+                    className="mb-1 shrink-0 flex h-10 w-10 items-center justify-center rounded-full bg-cyan-500 text-black hover:bg-cyan-400 hover:shadow-[0_0_20px_rgba(34,211,238,0.4)] hover:scale-105 active:scale-95 transition-all duration-200"
+                    title="Generate"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                      <line x1="5" y1="12" x2="19" y2="12" />
+                      <polyline points="12 5 19 12 12 19" />
+                    </svg>
+                  </button>
+                </div>
               </div>
-            </div>
             )}
           </div>
           <div className="mt-4 flex flex-wrap justify-center gap-3">
-            {tags.map((tag) => {
-              const isActive = activeTag === tag.label;
+            {t.tags.map((tag, idx) => {
+              const englishKey = tagKeys[idx];
+              const prompts = tagPrompts[englishKey] ?? [];
               return (
                 <motion.span
                   key={tag.label}
                   onClick={() => {
-                    setActiveTag(tag.label);
-                    const random = tag.prompts[Math.floor(Math.random() * tag.prompts.length)];
-                    typePrompt(random);
-                  }}
-                  animate={{
-                    scale: isActive ? 1.15 : 1,
+                    const random = prompts[Math.floor(Math.random() * prompts.length)];
+                    if (random) typePrompt(random);
                   }}
                   whileHover={{ scale: 1.08 }}
                   whileTap={{ scale: 0.95 }}
                   transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                  className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-4 py-2 text-xs backdrop-blur transition-colors duration-200 ${
-                    isActive
-                      ? "border-cyan-500 bg-cyan-500/10 text-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.15)]"
-                      : "border-gray-700 bg-gray-900/50 text-gray-400 hover:border-cyan-500/50 hover:text-cyan-400"
-                  }`}
+                  className="flex cursor-pointer items-center gap-1.5 rounded-full border px-4 py-2 text-xs backdrop-blur transition-all duration-300 border-gray-700 bg-gray-900/50 text-gray-400 hover:border-cyan-500 hover:text-cyan-400 hover:bg-cyan-500/10 hover:shadow-[0_0_20px_rgba(34,211,238,0.15)]"
                 >
                   <span>{tag.icon}</span>
                   {tag.label}
@@ -815,12 +667,11 @@ export default function Home() {
             >
               {/* Progress bar */}
               <div className="mb-6 flex gap-1.5">
-                {questions.map((_, i) => (
+                {questions.map((_: unknown, i: number) => (
                   <div
                     key={i}
-                    className={`h-1 flex-1 rounded-full transition-all duration-300 ${
-                      i <= currentStep ? "bg-cyan-500" : "bg-gray-700"
-                    }`}
+                    className={`h-1 flex-1 rounded-full transition-all duration-300 ${i <= currentStep ? "bg-cyan-500" : "bg-gray-700"
+                      }`}
                   />
                 ))}
               </div>
@@ -849,7 +700,7 @@ export default function Home() {
                     transition={{ duration: 1.5, repeat: Infinity }}
                     className="text-lg font-semibold text-white mb-3"
                   >
-                    Analyzing your business
+                    {t.analyzingBusiness}
                   </motion.h3>
 
                   {/* Cycling status messages */}
@@ -882,9 +733,9 @@ export default function Home() {
 
               {/* Step counter */}
               {!isAnalyzing && (
-              <p className="text-xs text-gray-500 mb-2">
-                Step {currentStep + 1} of {questions.length}
-              </p>
+                <p className="text-xs text-gray-500 mb-2">
+                  Step {currentStep + 1} of {questions.length}
+                </p>
               )}
 
               {/* Question */}
@@ -948,15 +799,14 @@ export default function Home() {
                     {/* Single select options — auto-advances */}
                     {currentQuestion.options && !currentQuestion.multi && !currentQuestion.colorPalette && (
                       <div className="grid grid-cols-3 gap-2">
-                        {currentQuestion.options.map((option) => (
+                        {currentQuestion.options.map((option: string) => (
                           <button
                             key={option}
                             onClick={() => handleSingleSelect(option)}
-                            className={`rounded-lg border px-4 py-2.5 text-sm transition-all duration-200 ${
-                              answers[currentQuestion.id] === option
-                                ? "border-cyan-500 bg-cyan-500/10 text-cyan-400"
-                                : "border-gray-700 bg-gray-800 text-gray-400 hover:border-gray-600"
-                            }`}
+                            className={`rounded-lg border px-4 py-2.5 text-sm transition-all duration-200 ${answers[currentQuestion.id] === option
+                              ? "border-cyan-500 bg-cyan-500/10 text-cyan-400"
+                              : "border-gray-700 bg-gray-800 text-gray-400 hover:border-gray-600"
+                              }`}
                           >
                             {option}
                           </button>
@@ -967,7 +817,7 @@ export default function Home() {
                     {/* Color palette single-select — auto-advances */}
                     {currentQuestion.options && currentQuestion.colorPalette && (
                       <div className="grid grid-cols-3 gap-3">
-                        {currentQuestion.options.map((palette) => {
+                        {currentQuestion.options.map((palette: string) => {
                           const isSelected = answers[currentQuestion.id] === palette;
                           const colors = paletteMap[palette] || ["#888", "#888", "#888"];
                           return (
@@ -977,19 +827,17 @@ export default function Home() {
                                 markAsEdited(currentQuestion.id);
                                 setAnswers({ ...answers, [currentQuestion.id]: palette });
                               }}
-                              className={`group relative flex flex-col items-center gap-2.5 rounded-xl border p-3.5 transition-all duration-200 ${
-                                isSelected
-                                  ? "border-cyan-500 bg-cyan-500/5 shadow-[0_0_20px_rgba(34,211,238,0.1)]"
-                                  : "border-gray-700 bg-gray-800/50 hover:border-gray-600 hover:bg-gray-800"
-                              }`}
+                              className={`group relative flex flex-col items-center gap-2.5 rounded-xl border p-3.5 transition-all duration-200 ${isSelected
+                                ? "border-cyan-500 bg-cyan-500/5 shadow-[0_0_20px_rgba(34,211,238,0.1)]"
+                                : "border-gray-700 bg-gray-800/50 hover:border-gray-600 hover:bg-gray-800"
+                                }`}
                             >
                               <div className="flex gap-1.5">
                                 {colors.map((hex, i) => (
                                   <div
                                     key={i}
-                                    className={`h-7 w-7 rounded-full transition-all duration-200 ${
-                                      isSelected ? "scale-110" : "group-hover:scale-105"
-                                    }`}
+                                    className={`h-7 w-7 rounded-full transition-all duration-200 ${isSelected ? "scale-110" : "group-hover:scale-105"
+                                      }`}
                                     style={{
                                       backgroundColor: hex,
                                       boxShadow: isSelected
@@ -1000,9 +848,8 @@ export default function Home() {
                                 ))}
                               </div>
                               <span
-                                className={`text-xs font-medium transition-colors duration-200 ${
-                                  isSelected ? "text-cyan-400" : "text-gray-500"
-                                }`}
+                                className={`text-xs font-medium transition-colors duration-200 ${isSelected ? "text-cyan-400" : "text-gray-500"
+                                  }`}
                               >
                                 {palette}
                               </span>
@@ -1018,10 +865,9 @@ export default function Home() {
                         <p className="mb-3 text-xs text-gray-500">
                           {currentQuestion.subtitle || "Select all that apply"}
                         </p>
-                        <div className={`grid gap-2 ${
-                          currentQuestion.id === "pages" ? "grid-cols-4" : "grid-cols-3"
-                        }`}>
-                          {currentQuestion.options.map((option) => (
+                        <div className={`grid gap-2 ${currentQuestion.id === "pages" ? "grid-cols-4" : "grid-cols-3"
+                          }`}>
+                          {currentQuestion.options.map((option: string) => (
                             <button
                               key={option}
                               onClick={() => {
@@ -1032,11 +878,10 @@ export default function Home() {
                                   handleMultiSelect(option);
                                 }
                               }}
-                              className={`rounded-lg border px-3 py-2.5 text-sm transition-all duration-200 ${
-                                selectedMulti.includes(option)
-                                  ? "border-cyan-500 bg-cyan-500/10 text-cyan-400"
-                                  : "border-gray-700 bg-gray-800 text-gray-400 hover:border-gray-600"
-                              }`}
+                              className={`rounded-lg border px-3 py-2.5 text-sm transition-all duration-200 ${selectedMulti.includes(option)
+                                ? "border-cyan-500 bg-cyan-500/10 text-cyan-400"
+                                : "border-gray-700 bg-gray-800 text-gray-400 hover:border-gray-600"
+                                }`}
                             >
                               {option}
                             </button>
@@ -1061,18 +906,16 @@ export default function Home() {
                   onClick={handleNext}
                   whileHover={canAdvance() ? { scale: 1.1 } : {}}
                   whileTap={canAdvance() ? { scale: 0.9 } : {}}
-                  className={`group relative flex h-11 w-11 items-center justify-center rounded-full border transition-all duration-300 ${
-                    canAdvance()
-                      ? "border-cyan-500/50 bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 hover:border-cyan-400 hover:shadow-[0_0_20px_rgba(34,211,238,0.3)] cursor-pointer"
-                      : "border-gray-700 bg-gray-800/50 text-gray-600 cursor-not-allowed"
-                  }`}
+                  className={`group relative flex h-11 w-11 items-center justify-center rounded-full border transition-all duration-300 ${canAdvance()
+                    ? "border-cyan-500/50 bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 hover:border-cyan-400 hover:shadow-[0_0_20px_rgba(34,211,238,0.3)] cursor-pointer"
+                    : "border-gray-700 bg-gray-800/50 text-gray-600 cursor-not-allowed"
+                    }`}
                 >
                   {/* Outer glow ring */}
-                  <span className={`absolute inset-0 rounded-full border scale-110 transition-all duration-300 ${
-                    canAdvance()
-                      ? "border-cyan-400/20 group-hover:scale-125 group-hover:border-cyan-400/40"
-                      : "border-gray-700/20"
-                  }`} />
+                  <span className={`absolute inset-0 rounded-full border scale-110 transition-all duration-300 ${canAdvance()
+                    ? "border-cyan-400/20 group-hover:scale-125 group-hover:border-cyan-400/40"
+                    : "border-gray-700/20"
+                    }`} />
                   {currentStep === questions.length - 1 ? (
                     /* Rocket icon for final step */
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
@@ -1087,6 +930,123 @@ export default function Home() {
                 </motion.button>
               </div>}
             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Generating Overlay */}
+      <AnimatePresence>
+        {isGenerating && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-gray-950 px-4"
+          >
+            <div className="relative flex items-center justify-center h-40 w-40 mb-8">
+              {/* Spinning rings */}
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                className="absolute inset-0 rounded-full border-2 border-dashed border-cyan-500/30"
+              />
+              <motion.div
+                animate={{ rotate: -360 }}
+                transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
+                className="absolute inset-2 rounded-full border border-cyan-400/20"
+              />
+              <motion.div
+                animate={{ rotate: 180 }}
+                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                className="absolute inset-4 rounded-full border border-cyan-300/10"
+              />
+
+              {/* Center Website Wireframe Object */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5 }}
+                className="relative h-20 w-24 rounded-lg border border-cyan-500/30 bg-gray-900/80 p-2 shadow-[0_0_30px_rgba(34,211,238,0.2)] overflow-hidden backdrop-blur-sm"
+              >
+                {/* Website Header */}
+                <div className="flex items-center gap-1 border-b border-gray-800 pb-1">
+                  <div className="h-1.5 w-1.5 rounded-full bg-red-500/50" />
+                  <div className="h-1.5 w-1.5 rounded-full bg-yellow-500/50" />
+                  <div className="h-1.5 w-1.5 rounded-full bg-green-500/50" />
+                  <div className="ml-2 h-1.5 w-8 rounded bg-gray-800" />
+                </div>
+
+                {/* Website Body Layout Elements */}
+                <div className="mt-2 flex gap-1.5">
+                  <motion.div
+                    animate={{ height: ["40%", "80%", "40%"] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                    className="w-1/3 rounded bg-cyan-900/40"
+                  />
+                  <div className="flex w-2/3 flex-col gap-1.5">
+                    <motion.div
+                      animate={{ width: ["100%", "40%", "100%"] }}
+                      transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+                      className="h-2 rounded bg-gray-800/80"
+                    />
+                    <div className="h-2 w-3/4 rounded bg-gray-800/60" />
+                    <motion.div
+                      animate={{ opacity: [0.3, 1, 0.3] }}
+                      transition={{ duration: 1.5, repeat: Infinity }}
+                      className="mt-1 flex h-4 items-center justify-center rounded border border-cyan-500/20 bg-cyan-950/30"
+                    >
+                      <LayoutTemplate className="h-2.5 w-2.5 text-cyan-400/70" />
+                    </motion.div>
+                  </div>
+                </div>
+
+                {/* Animated Scanning Laser */}
+                <motion.div
+                  animate={{ top: ["0%", "100%", "0%"] }}
+                  transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                  className="absolute left-0 right-0 h-0.5 w-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)] z-10 opacity-70"
+                />
+              </motion.div>
+
+              {/* Orbiting Elements */}
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+                className="absolute inset-0 z-20"
+              >
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full border border-cyan-500/40 bg-gray-900 p-1.5 shadow-[0_0_15px_rgba(34,211,238,0.3)]">
+                  <Sparkles className="h-4 w-4 text-cyan-400" />
+                </div>
+              </motion.div>
+
+              <motion.div
+                animate={{ rotate: -360 }}
+                transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
+                className="absolute inset-0 z-20"
+              >
+                <div className="absolute -bottom-3 left-1/4 rounded-full border border-violet-500/40 bg-gray-900 p-1.5 shadow-[0_0_15px_rgba(139,92,246,0.3)]">
+                  <Code2 className="h-4 w-4 text-violet-400" />
+                </div>
+              </motion.div>
+            </div>
+
+            <motion.h2
+              animate={{ opacity: [1, 0.6, 1] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white via-cyan-100 to-white"
+            >
+              Generating your website...
+            </motion.h2>
+            <p className="text-cyan-400/60 mt-4 text-lg">Assembling components and styles</p>
+
+            <div className="w-64 h-1.5 bg-gray-800 rounded-full mt-10 overflow-hidden">
+              <motion.div
+                initial={{ width: "0%" }}
+                animate={{ width: "100%" }}
+                transition={{ duration: 4, ease: "easeInOut" }}
+                className="h-full bg-cyan-400 rounded-full shadow-[0_0_10px_rgba(34,211,238,0.5)]"
+              />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
