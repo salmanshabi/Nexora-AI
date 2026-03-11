@@ -1,14 +1,19 @@
 "use client";
 import React, { useState, useRef, useEffect } from 'react';
+import { useRouter } from "next/navigation";
 import { useBuilderStore } from '../../store/useBuilderStore';
 import { DeviceToggle } from '../shared/DeviceToggle';
 import { Undo2, Redo2, Eye, Zap, Save, Check, ChevronDown, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 
 export function TopBar() {
+    const router = useRouter();
     const undo = useBuilderStore(state => state.undo);
     const redo = useBuilderStore(state => state.redo);
     const past = useBuilderStore(state => state.past);
     const future = useBuilderStore(state => state.future);
+    const projectId = useBuilderStore(state => state.projectId);
+    const setProjectId = useBuilderStore(state => state.setProjectId);
+    const presentState = useBuilderStore(state => state.present);
     const websiteName = useBuilderStore(state => state.present.websiteProps.name);
     const updateWebsiteProps = useBuilderStore(state => state.updateWebsiteProps);
     const pages = useBuilderStore(state => state.present.pages);
@@ -20,18 +25,78 @@ export function TopBar() {
     const setCanvasZoom = useBuilderStore(state => state.setCanvasZoom);
 
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+    const [saveError, setSaveError] = useState<string | null>(null);
     const [pageDropdownOpen, setPageDropdownOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const saveResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const activePage = pages.find(p => p.id === activePageId);
 
-    const handleSave = () => {
+    const handleSave = async () => {
+        if (saveStatus === 'saving') return;
+
+        setSaveError(null);
         setSaveStatus('saving');
-        // Simulate saving (replace with actual save logic later)
-        setTimeout(() => {
+
+        const parseError = async (response: Response) => {
+            try {
+                const payload: { error?: string } = await response.json();
+                if (payload?.error) return payload.error;
+            } catch {
+                // Ignore parse failures and fallback to status text
+            }
+            return `Request failed with status ${response.status}`;
+        };
+
+        try {
+            if (projectId) {
+                const updateRes = await fetch(`/api/projects/${projectId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: websiteName,
+                        state: presentState,
+                        reason: 'manual_save',
+                    }),
+                });
+
+                if (!updateRes.ok) {
+                    throw new Error(await parseError(updateRes));
+                }
+            } else {
+                const createRes = await fetch('/api/projects', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: websiteName,
+                        state: presentState,
+                    }),
+                });
+
+                if (!createRes.ok) {
+                    throw new Error(await parseError(createRes));
+                }
+
+                const payload: { project?: { id?: string } } = await createRes.json();
+                const newProjectId = payload?.project?.id;
+
+                if (!newProjectId) {
+                    throw new Error('Created project is missing an ID');
+                }
+
+                setProjectId(newProjectId);
+                router.replace(`/builder?project=${newProjectId}`);
+            }
+
             setSaveStatus('saved');
-            setTimeout(() => setSaveStatus('idle'), 2000);
-        }, 800);
+            if (saveResetTimer.current) clearTimeout(saveResetTimer.current);
+            saveResetTimer.current = setTimeout(() => setSaveStatus('idle'), 2000);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to save project';
+            console.error('Save project error:', error);
+            setSaveError(message);
+            setSaveStatus('idle');
+        }
     };
 
     // Close dropdown on outside click
@@ -42,7 +107,10 @@ export function TopBar() {
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+            if (saveResetTimer.current) clearTimeout(saveResetTimer.current);
+        };
     }, []);
 
     const zoomPercent = Math.round(canvasZoom * 100);
@@ -157,6 +225,7 @@ export function TopBar() {
                 <button
                     onClick={handleSave}
                     disabled={saveStatus === 'saving'}
+                    title={saveError ? saveError : 'Save project'}
                     className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-all border ${saveStatus === 'saved'
                             ? 'text-green-400 border-green-500/30 bg-green-500/10'
                             : saveStatus === 'saving'
@@ -186,6 +255,11 @@ export function TopBar() {
                     <Zap size={14} />
                     <span>Publish</span>
                 </button>
+                {saveError && (
+                    <span className="hidden lg:inline text-xs text-red-400 ml-2 max-w-[220px] truncate" title={saveError}>
+                        {saveError}
+                    </span>
+                )}
             </div>
         </div>
     );

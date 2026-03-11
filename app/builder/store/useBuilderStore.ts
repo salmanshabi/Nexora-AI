@@ -8,6 +8,7 @@ export interface BuilderState {
     past: AppStateSnapshot[];
     present: AppStateSnapshot;
     future: AppStateSnapshot[];
+    projectId: string | null;
 
     // UI Selection State (Not saved in history)
     activePageId: string;
@@ -37,6 +38,8 @@ export interface BuilderState {
     // Universal Setter
     setAppState: (newState: AppStateSnapshot) => void;
     loadTemplate: (newState: Partial<AppStateSnapshot>) => void;
+    loadProject: (projectId: string, projectState: AppStateSnapshot) => void;
+    setProjectId: (projectId: string | null) => void;
 
     // Granular Mutations
     updateTokens: (updates: Partial<DesignTokens>) => void;
@@ -154,6 +157,7 @@ export const useBuilderStore = create<BuilderState>()(persist((set) => ({
     past: [],
     present: initialState,
     future: [],
+    projectId: null,
 
     activePageId: "home",
     selectedSectionId: null,
@@ -171,13 +175,30 @@ export const useBuilderStore = create<BuilderState>()(persist((set) => ({
 
     loadTemplate: (templateState) => set((state) => {
         const nextState = { ...state.present, ...templateState };
+        const nextActivePageId = nextState.pages?.[0]?.id ?? "home";
         return {
             ...saveToHistory(state, nextState),
-            activePageId: "home",
+            projectId: null,
+            activePageId: nextActivePageId,
             selectedSectionId: null,
             selectedElementId: null
         }
     }),
+
+    loadProject: (projectId, projectState) => set(() => {
+        const nextActivePageId = projectState.pages?.[0]?.id ?? "home";
+        return {
+            past: [],
+            present: projectState,
+            future: [],
+            projectId,
+            activePageId: nextActivePageId,
+            selectedSectionId: null,
+            selectedElementId: null,
+        };
+    }),
+
+    setProjectId: (projectId) => set({ projectId }),
 
     setActivePage: (pageId) => set({ activePageId: pageId }),
     setSelectedSection: (sectionId) => set({ selectedSectionId: sectionId, selectedElementId: null }), // Deselect el
@@ -401,6 +422,7 @@ export const useBuilderStore = create<BuilderState>()(persist((set) => ({
         skipHydration: true,
         partialize: (state: BuilderState) => ({
             present: state.present,
+            projectId: state.projectId,
             activePageId: state.activePageId,
             device: state.device,
             canvasZoom: state.canvasZoom,

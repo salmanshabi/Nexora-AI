@@ -1,9 +1,7 @@
 import { auth } from "@/auth";
-import { PrismaClient } from "@prisma/client";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import DashboardClient from "./DashboardClient";
-
-const prisma = new PrismaClient();
 
 export default async function DashboardPage() {
     const session = await auth();
@@ -12,10 +10,22 @@ export default async function DashboardPage() {
         redirect("/sign-in");
     }
 
-    const projects = await prisma.project.findMany({
-        where: { userId: session.user.id },
-        orderBy: { updatedAt: "desc" },
-    });
+    const supabase = createSupabaseAdminClient();
+    const { data, error } = await supabase
+        .from("projects")
+        .select("id, name, updated_at")
+        .eq("owner_id", session.user.id)
+        .order("updated_at", { ascending: false });
+
+    if (error) {
+        console.error("Failed to load dashboard projects:", error);
+    }
+
+    const projects = (data ?? []).map((project) => ({
+        id: project.id,
+        name: project.name,
+        updatedAt: project.updated_at,
+    }));
 
     return (
         <DashboardClient

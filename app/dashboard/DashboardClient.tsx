@@ -1,14 +1,14 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Plus, Settings, LogOut, Layout, MoreVertical } from "lucide-react";
+import { Plus, LogOut, Layout, MoreVertical } from "lucide-react";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
 
 interface Project {
     id: string;
     name: string;
-    updatedAt: Date;
+    updatedAt: string | Date;
 }
 
 export default function DashboardClient({ user, projects }: { user: { name: string, email: string }, projects: Project[] }) {
@@ -71,7 +71,7 @@ export default function DashboardClient({ user, projects }: { user: { name: stri
                         </div>
                         <h3 className="text-xl font-bold text-white mb-2">No projects yet</h3>
                         <p className="text-gray-400 max-w-sm mb-8">
-                            You haven't created any websites. Start building your first Nexora AI powered site now.
+                            You haven&apos;t created any websites. Start building your first Nexora AI powered site now.
                         </p>
                         <Link href="/templates">
                             <button className="rounded-lg bg-white/10 px-5 py-2.5 font-medium text-white hover:bg-white/20 transition backdrop-blur-sm border border-white/5">
@@ -104,6 +104,12 @@ export default function DashboardClient({ user, projects }: { user: { name: stri
                                     <p className="text-sm text-gray-500">
                                         Last edited {new Date(project.updatedAt).toLocaleDateString()}
                                     </p>
+                                    <Link
+                                        href={`/builder?project=${project.id}`}
+                                        className="inline-flex mt-3 rounded-md border border-cyan-500/30 px-3 py-1.5 text-xs font-medium text-cyan-300 hover:border-cyan-400 hover:text-cyan-200 transition-colors"
+                                    >
+                                        Open Project
+                                    </Link>
                                 </div>
                             </motion.div>
                         ))}
