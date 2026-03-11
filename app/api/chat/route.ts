@@ -51,7 +51,7 @@ Avoid generic AI-generated aesthetics:
         const result = await model.run(apiMessages);
 
         if (result.error) {
-            console.error(\`Bytez AI Chat Error (\${modelName}):\`, result.error);
+            console.error(`Bytez AI Chat Error (${modelName}):`, result.error);
             return NextResponse.json({ error: "Failed to generate chat response" }, { status: 500 });
         }
 
