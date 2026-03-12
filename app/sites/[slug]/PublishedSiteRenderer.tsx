@@ -1,5 +1,5 @@
 /* eslint-disable @next/next/no-img-element */
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactElement } from "react";
 
 import type { AppStateSnapshot, ElementNode, Section } from "@/app/builder/store/types";
 
@@ -39,7 +39,7 @@ function spacingPadding(value: Section["layout"]["padding"]) {
   return "2.5rem";
 }
 
-function renderElement(node: ElementNode, key: string): JSX.Element {
+function renderElement(node: ElementNode, key: string): ReactElement {
   const style = asStyle(node.props.style);
 
   if (node.type === "Text") {
