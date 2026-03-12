@@ -29,7 +29,7 @@ async function getPublishedSite(slug: string) {
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
   const { slug } = await params;
   const site = await getPublishedSite(slug);
-  const state = site?.site_state as AppStateSnapshot | undefined;
+  const state = site?.site_state as unknown as AppStateSnapshot | undefined;
   const siteName = state?.websiteProps?.name || slug;
 
   return {
@@ -46,6 +46,6 @@ export default async function PublishedSitePage({ params }: { params: Promise<Pa
     notFound();
   }
 
-  const state = site.site_state as AppStateSnapshot;
+  const state = site.site_state as unknown as AppStateSnapshot;
   return <PublishedSiteRenderer state={state} />;
 }
