@@ -11,7 +11,6 @@ import AttachmentPreview from "@/app/components/AttachmentPreview";
 import CameraCapture from "@/app/components/CameraCapture";
 import UrlInput from "@/app/components/UrlInput";
 import GoogleDrivePicker from "@/app/components/GoogleDrivePicker";
-import AnimatedBackground from "@/app/components/AnimatedBackground";
 import { useLanguage } from "@/app/context/LanguageContext";
 import { translations } from "@/app/translations";
 
@@ -431,7 +430,6 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen flex-col relative overflow-hidden">
-      <AnimatedBackground />
       {/* Hero Section */}
       <section className="relative z-10 flex flex-col items-center justify-center px-8 py-32 text-center h-full min-h-screen">
         <motion.h1

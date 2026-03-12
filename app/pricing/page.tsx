@@ -4,7 +4,6 @@ import { useLanguage } from "@/app/context/LanguageContext";
 import { translations } from "@/app/translations";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, X } from "lucide-react";
-import AnimatedBackground from "@/app/components/AnimatedBackground";
 import { useState } from "react";
 
 export default function Pricing() {
@@ -31,8 +30,6 @@ export default function Pricing() {
 
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-gray-950 px-4 py-24 sm:px-6 lg:px-8">
-      <AnimatedBackground />
-
       <div className="relative z-10 w-full max-w-7xl mx-auto">
         <div className="text-center mb-16">
           <motion.h1

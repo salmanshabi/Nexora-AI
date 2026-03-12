@@ -7,6 +7,7 @@ import LanguageToggle from "./components/LanguageToggle";
 import NavLinks from "./components/NavLinks";
 import FooterText from "./components/FooterText";
 import { LanguageProvider } from "./context/LanguageContext";
+import AnimatedBackground from "./components/AnimatedBackground";
 import "./globals.css";
 
 const outfit = Outfit({
@@ -31,6 +32,7 @@ export default function RootLayout({
       >
         <LanguageProvider>
           <SessionProvider>
+            <AnimatedBackground />
             <nav className="relative z-50 flex items-center justify-between px-8 py-6 bg-transparent">
               <Link href="/" className="flex items-center gap-2 text-xl font-bold text-cyan-400">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" className="h-8 w-8 drop-shadow-[0_0_10px_rgba(34,211,238,0.7)]">

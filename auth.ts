@@ -3,6 +3,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import type { AppProviders } from "next-auth/providers";
 import Google from "next-auth/providers/google";
 import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
+import Apple from "next-auth/providers/apple";
 import bcrypt from "bcrypt";
 import { PrismaClient } from "@prisma/client";
 import { authConfig } from "./auth.config";
@@ -17,6 +18,8 @@ const googleClientSecret =
 const microsoftClientId = process.env.AUTH_MICROSOFT_ENTRA_ID_ID;
 const microsoftClientSecret = process.env.AUTH_MICROSOFT_ENTRA_ID_SECRET;
 const microsoftIssuer = process.env.AUTH_MICROSOFT_ENTRA_ID_ISSUER;
+const appleClientId = process.env.AUTH_APPLE_ID;
+const appleClientSecret = process.env.AUTH_APPLE_SECRET;
 
 const providers: AppProviders = [
   CredentialsProvider({
@@ -71,6 +74,15 @@ if (hasConfiguredValue(microsoftClientId) && hasConfiguredValue(microsoftClientS
       clientId: microsoftClientId,
       clientSecret: microsoftClientSecret,
       ...(hasConfiguredValue(microsoftIssuer) ? { issuer: microsoftIssuer } : {}),
+    })
+  );
+}
+
+if (hasConfiguredValue(appleClientId) && hasConfiguredValue(appleClientSecret)) {
+  providers.push(
+    Apple({
+      clientId: appleClientId,
+      clientSecret: appleClientSecret,
     })
   );
 }
