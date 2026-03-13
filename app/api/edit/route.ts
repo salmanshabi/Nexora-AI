@@ -1,11 +1,10 @@
+import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
-import Bytez from "bytez.js";
 
 import { auth } from "@/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
-const key = process.env.BYTEZ_API_KEY ?? "";
-const sdk = new Bytez(key);
+const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 export async function POST(req: Request) {
     const session = await auth();
@@ -48,13 +47,13 @@ You will be provided with the CURRENT STATE of their website, including the \`pa
 If images are provided, examine them to understand the user's desired style, layout, branding, or color palette.
 ${languageInstruction}
 
-Evaluate the user's command. Return ONLY a valid JSON object containing the properties that should be updated. Return no other text or explanation. 
+Evaluate the user's command. Return ONLY a valid JSON object containing the properties that should be updated. Return no other text or explanation.
 - To add, edit, or delete UI elements, return a "pages" array with the updated page object(s). A page object has "id", "title", "slug", "isHiddenInNav", "seo", and "sections".
-- VERY IMPORTANT: Sections use an "elements" tree architecture. 
+- VERY IMPORTANT: Sections use an "elements" tree architecture.
   Each section requires: "id", "type" ("Hero", "Features", "CallToAction", "Text"), "isLocked", and "layout".
   - "layout" signature: { "width": "contained"|"full", "padding": "compact"|"default"|"spacious", "backgroundType": "transparent"|"solid"|"gradient", "columns": { "desktop": 1|2|3|4 } }
   - "elements": an array of ElementNode objects.
-  
+
   ElementNode signature:
   - "id": unique string
   - "type": "Text" | "Button" | "Image" | "Container" | "FeatureCard"
@@ -68,83 +67,57 @@ Current State:
 ${JSON.stringify(currentState || {}, null, 2)}
 `;
 
-        // Use Bytez for text-only (faster/cheaper), but the official Gemini SDK for multimodal (Bytez is bugged for images)
-        let output;
+        let output: string;
+        let provider: string;
+        let totalTokens = 0;
 
         if (images.length > 0) {
-            // Native Gemini Implementation via @google/genai
-            const { GoogleGenAI } = await import('@google/genai');
-            // Assuming the environment variable GEMINI_API_KEY is available, or use the user's provided keys.
-            // Since this is a local project without guaranteed env vars, we'll try to find an API key or mock it
-            const apiKey = process.env.GEMINI_API_KEY || "dummy_key_would_fail";
-
-            if (apiKey === "dummy_key_would_fail") {
-                // Return a mock response for UI testing if no API key is set
-                console.warn("No GEMINI_API_KEY found, returning mock image response");
-                return NextResponse.json({
-                    websiteProps: { name: "Image Parsed (Mock)" },
-                    tokens: { colors: { primary: "#4F46E5" } }
-                });
+            // Use Gemini for multimodal (image) editing
+            if (!process.env.GEMINI_API_KEY) {
+                return NextResponse.json({ error: "Image editing not configured" }, { status: 500 });
             }
 
-            const ai = new GoogleGenAI({ apiKey });
-            const model = 'gemini-2.5-flash';
+            const { GoogleGenAI } = await import('@google/genai');
+            const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-            const contents: any[] = [
+            const contents: unknown[] = [
                 { text: systemInstruction },
                 { text: prompt || "Analyze this image and apply its style/content to my site." }
             ];
 
-            // Add images via inlineData
             for (const file of images) {
                 const buffer = await file.arrayBuffer();
                 const base64 = Buffer.from(buffer).toString("base64");
-                contents.push({
-                    inlineData: {
-                        data: base64,
-                        mimeType: file.type
-                    }
-                });
+                contents.push({ inlineData: { data: base64, mimeType: file.type } });
             }
 
-            try {
-                const response = await ai.models.generateContent({
-                    model,
-                    contents,
-                    config: {
-                        temperature: 0.1,
-                    }
-                });
-                output = response.text;
-            } catch (err) {
-                console.error("Gemini API Edit Error:", err);
-                return NextResponse.json({ error: "Failed to process image edit via Gemini" }, { status: 500 });
-            }
-
+            const response = await ai.models.generateContent({
+                model: 'gemini-2.5-flash',
+                contents,
+                config: { temperature: 0.1 },
+            });
+            output = response.text ?? "";
+            provider = "gemini";
         } else {
-            // Bytez Implementation for Text-Only
-            const modelName = "anthropic/claude-opus-4-6";
-            const model = sdk.model(modelName);
-
-            const messages: any[] = [
-                { role: "system", content: systemInstruction },
-                { role: "user", content: prompt }
-            ];
-
-            const result = await model.run(messages);
-            if (result.error) {
-                console.error(`Bytez AI Edit Error (${modelName}):`, result.error);
-                return NextResponse.json({ error: "Failed to process edit" }, { status: 500 });
+            // Use Anthropic for text-only editing
+            if (!process.env.ANTHROPIC_API_KEY) {
+                return NextResponse.json({ error: "AI service not configured" }, { status: 500 });
             }
-            output = result.output;
+
+            const message = await client.messages.create({
+                model: "claude-opus-4-6",
+                max_tokens: 4096,
+                system: systemInstruction,
+                messages: [{ role: "user", content: prompt }],
+            });
+
+            const textContent = message.content.find((c) => c.type === "text");
+            output = textContent?.text ?? "";
+            provider = "anthropic";
+            totalTokens = (message.usage?.input_tokens ?? 0) + (message.usage?.output_tokens ?? 0);
         }
 
-
-
         // Parse JSON output
-        let parsedResult = {};
-
-        // Helper to extract JSON from a string
         const extractJSON = (str: string) => {
             let cleanStr = str;
             if (cleanStr.includes("```json")) cleanStr = cleanStr.split("```json")[1].split("```")[0];
@@ -152,26 +125,9 @@ ${JSON.stringify(currentState || {}, null, 2)}
             return JSON.parse(cleanStr.trim());
         };
 
+        let parsedResult: Record<string, unknown> = {};
         try {
-            if (typeof output === "string") {
-                parsedResult = extractJSON(output);
-            } else if (typeof output === "object" && output !== null) {
-                // Bytez might return { role: 'assistant', content: '...' }
-                if (!Array.isArray(output) && 'content' in output) {
-                    parsedResult = extractJSON(output.content as string);
-                } else if (Array.isArray(output) && output.length > 0) {
-                    const firstResult = output[0];
-                    if (firstResult?.message?.content) {
-                        parsedResult = extractJSON(firstResult.message.content);
-                    } else if (typeof firstResult?.content === 'string') {
-                        parsedResult = extractJSON(firstResult.content);
-                    } else {
-                        parsedResult = firstResult;
-                    }
-                } else {
-                    parsedResult = output;
-                }
-            }
+            parsedResult = extractJSON(output);
         } catch (e) {
             console.error("Failed to parse AI edit JSON:", output, e);
             return NextResponse.json({ error: "Invalid JSON format returned" }, { status: 500 });
@@ -181,11 +137,11 @@ ${JSON.stringify(currentState || {}, null, 2)}
             const supabase = createSupabaseAdminClient();
             supabase.from("ai_usage_logs").insert({
                 owner_id: userId,
-                provider: images.length > 0 ? "gemini" : "bytez",
+                provider,
                 kind: "edit",
-                tokens_used: prompt ? Math.ceil(prompt.length / 4) : 0,
+                tokens_used: totalTokens || Math.ceil((prompt?.length ?? 0) / 4),
                 metadata: {
-                    model: images.length > 0 ? "gemini-2.5-flash" : "anthropic/claude-opus-4-6",
+                    model: images.length > 0 ? "gemini-2.5-flash" : "claude-opus-4-6",
                     prompt_length: prompt?.length ?? 0,
                     has_images: images.length > 0,
                 },
