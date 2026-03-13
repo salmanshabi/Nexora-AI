@@ -92,10 +92,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       try {
         const supabase = createSupabaseAdminClient();
 
-        const { data: existing } = await supabase.auth.admin.getUserByEmail(user.email);
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("email", user.email)
+          .maybeSingle();
 
-        if (existing?.user) {
-          user.id = existing.user.id;
+        if (profile?.id) {
+          user.id = profile.id;
         } else {
           const { data: created, error } = await supabase.auth.admin.createUser({
             email: user.email,
