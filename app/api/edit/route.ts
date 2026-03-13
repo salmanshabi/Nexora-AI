@@ -80,7 +80,7 @@ ${JSON.stringify(currentState || {}, null, 2)}
             const { GoogleGenAI } = await import('@google/genai');
             const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-            const contents: unknown[] = [
+            const contents: Array<{ text?: string; inlineData?: { data: string; mimeType: string } }> = [
                 { text: systemInstruction },
                 { text: prompt || "Analyze this image and apply its style/content to my site." }
             ];
