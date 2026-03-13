@@ -11,6 +11,7 @@ export function ChatWidget() {
 
   const { messages, input, handleInputChange, handleSubmit, isLoading, error } = useChat({
     api: '/api/chat',
+    streamProtocol: 'text',
   });
 
   useEffect(() => {
