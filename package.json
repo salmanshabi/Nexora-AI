@@ -4,8 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
-    "db:migrate": "prisma migrate deploy",
+    "build": "next build",
     "start": "next start",
     "lint": "eslint"
   },
@@ -17,10 +16,8 @@
     "@google/genai": "^1.43.0",
     "@supabase/ssr": "^0.9.0",
     "@supabase/supabase-js": "^2.99.1",
-    "@types/bcrypt": "^6.0.0",
     "@types/uuid": "^10.0.0",
     "ai": "^6.0.116",
-    "bcrypt": "^6.0.0",
     "bytez.js": "^3.0.0",
     "clsx": "^2.1.1",
     "framer-motion": "^12.34.3",
@@ -38,7 +35,6 @@
     "zustand": "^5.0.11"
   },
   "devDependencies": {
-    "@prisma/client": "^5.22.0",
     "@tailwindcss/postcss": "^4",
     "@types/lodash": "^4.17.24",
     "@types/node": "^20",
@@ -46,7 +42,6 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
-    "prisma": "^5.22.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

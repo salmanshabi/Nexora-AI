@@ -4,11 +4,9 @@ import type { AppProviders } from "next-auth/providers";
 import Google from "next-auth/providers/google";
 import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
 import Apple from "next-auth/providers/apple";
-import bcrypt from "bcrypt";
-import { PrismaClient } from "@prisma/client";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { authConfig } from "./auth.config";
 
-const prisma = new PrismaClient();
 const hasConfiguredValue = (value: string | undefined): value is string =>
   Boolean(value && value.trim() && !value.trim().toLowerCase().startsWith("your-"));
 
@@ -33,27 +31,20 @@ const providers: AppProviders = [
         return null;
       }
 
-      const user = await prisma.user.findUnique({
-        where: { email: credentials.email as string },
+      const supabase = createSupabaseAdminClient();
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: credentials.email as string,
+        password: credentials.password as string,
       });
 
-      if (!user || !user.passwordHash) {
-        return null;
-      }
-
-      const isPasswordValid = await bcrypt.compare(
-        credentials.password as string,
-        user.passwordHash
-      );
-
-      if (!isPasswordValid) {
+      if (error || !data.user) {
         return null;
       }
 
       return {
-        id: user.id,
-        name: user.name,
-        email: user.email,
+        id: data.user.id,
+        name: data.user.user_metadata?.full_name ?? data.user.email ?? "",
+        email: data.user.email ?? "",
       };
     },
   }),
@@ -92,6 +83,53 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   providers,
   session: { strategy: "jwt" },
   callbacks: {
+    async signIn({ user, account }) {
+      // For OAuth providers, find or create the user in Supabase Auth
+      // so session.user.id is always a Supabase Auth UUID
+      if (account?.provider === "credentials") return true;
+      if (!user.email) return false;
+
+      try {
+        const supabase = createSupabaseAdminClient();
+
+        const { data: existing } = await supabase.auth.admin.getUserByEmail(user.email);
+
+        if (existing?.user) {
+          user.id = existing.user.id;
+        } else {
+          const { data: created, error } = await supabase.auth.admin.createUser({
+            email: user.email,
+            email_confirm: true,
+            user_metadata: {
+              full_name: user.name ?? "",
+              avatar_url: user.image ?? "",
+            },
+          });
+
+          if (error || !created.user) {
+            console.error("Failed to create Supabase user for OAuth:", error);
+            return false;
+          }
+
+          user.id = created.user.id;
+
+          // Create profile row (non-fatal)
+          supabase.from("profiles").insert({
+            id: created.user.id,
+            email: user.email,
+            full_name: user.name ?? "",
+            avatar_url: user.image ?? null,
+          }).then(({ error: profileError }) => {
+            if (profileError) console.error("Failed to create OAuth profile:", profileError);
+          });
+        }
+      } catch (err) {
+        console.error("OAuth Supabase sync error:", err);
+        return false;
+      }
+
+      return true;
+    },
     async jwt({ token, user }) {
       if (user?.id) {
         token.id = user.id;

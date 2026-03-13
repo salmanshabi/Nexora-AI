@@ -111,6 +111,36 @@ export async function GET(req: Request, context: RouteContext) {
   }
 }
 
+export async function DELETE(_req: Request, context: RouteContext) {
+  const session = await auth();
+  const userId = session?.user?.id;
+  if (!userId) return unauthorizedResponse();
+
+  try {
+    const projectId = await resolveProjectId(context);
+    const supabase = createSupabaseAdminClient();
+
+    const { error } = await supabase
+      .from("published_sites")
+      .update({ is_active: false })
+      .eq("project_id", projectId)
+      .eq("owner_id", userId);
+
+    if (error) {
+      console.error("Failed to unpublish site:", error);
+      return NextResponse.json({ error: "Failed to unpublish site" }, { status: 500 });
+    }
+
+    return NextResponse.json({ message: "Site unpublished" });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: "Invalid project ID" }, { status: 400 });
+    }
+    console.error("Unexpected unpublish error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
 export async function POST(req: Request, context: RouteContext) {
   const session = await auth();
   const userId = session?.user?.id;

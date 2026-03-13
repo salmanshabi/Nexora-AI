@@ -1,10 +1,16 @@
 import { NextResponse } from "next/server";
 import Bytez from "bytez.js";
 
-const key = "d0a484c7394303209afaa881f7a3f8bd";
+import { auth } from "@/auth";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+
+const key = process.env.BYTEZ_API_KEY ?? "";
 const sdk = new Bytez(key);
 
 export async function POST(req: Request) {
+    const session = await auth();
+    const userId = session?.user?.id ?? null;
+
     try {
         const body = await req.json();
         const { prompt } = body;
@@ -49,6 +55,19 @@ export async function POST(req: Request) {
         // ensure it's formatted as a data URI for the image src
         if (!imageData.startsWith("data:image")) {
             imageData = `data:image/jpeg;base64,${imageData}`;
+        }
+
+        if (userId) {
+            const supabase = createSupabaseAdminClient();
+            supabase.from("ai_usage_logs").insert({
+                owner_id: userId,
+                provider: "bytez",
+                kind: "image",
+                tokens_used: prompt ? Math.ceil(prompt.length / 4) : 0,
+                metadata: { model: "stabilityai/stable-diffusion-xl-base-1.0", prompt_length: prompt?.length ?? 0 },
+            }).then(({ error: logErr }) => {
+                if (logErr) console.error("Failed to log AI usage:", logErr);
+            });
         }
 
         return NextResponse.json({ image: imageData });

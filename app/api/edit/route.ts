@@ -1,10 +1,16 @@
 import { NextResponse } from "next/server";
 import Bytez from "bytez.js";
 
-const key = "d0a484c7394303209afaa881f7a3f8bd";
+import { auth } from "@/auth";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+
+const key = process.env.BYTEZ_API_KEY ?? "";
 const sdk = new Bytez(key);
 
 export async function POST(req: Request) {
+    const session = await auth();
+    const userId = session?.user?.id ?? null;
+
     try {
         const formData = await req.formData();
         const prompt = formData.get("prompt") as string;
@@ -169,6 +175,23 @@ ${JSON.stringify(currentState || {}, null, 2)}
         } catch (e) {
             console.error("Failed to parse AI edit JSON:", output, e);
             return NextResponse.json({ error: "Invalid JSON format returned" }, { status: 500 });
+        }
+
+        if (userId) {
+            const supabase = createSupabaseAdminClient();
+            supabase.from("ai_usage_logs").insert({
+                owner_id: userId,
+                provider: images.length > 0 ? "gemini" : "bytez",
+                kind: "edit",
+                tokens_used: prompt ? Math.ceil(prompt.length / 4) : 0,
+                metadata: {
+                    model: images.length > 0 ? "gemini-2.5-flash" : "anthropic/claude-opus-4-6",
+                    prompt_length: prompt?.length ?? 0,
+                    has_images: images.length > 0,
+                },
+            }).then(({ error: logErr }) => {
+                if (logErr) console.error("Failed to log AI usage:", logErr);
+            });
         }
 
         return NextResponse.json(parsedResult);

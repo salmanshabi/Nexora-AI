@@ -1,6 +1,9 @@
 import { streamText } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 
+import { auth } from "@/auth";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+
 const systemInstruction = `
 You are the built-in AI Assistant for the "Nexora AI" website builder.
 Your goal is to help the user build beautiful websites and troubleshoot any issues they might have within the builder.
@@ -25,6 +28,9 @@ Avoid generic AI-generated aesthetics:
 `;
 
 export async function POST(req: Request) {
+    const session = await auth();
+    const userId = session?.user?.id ?? null;
+
     try {
         const { messages } = await req.json();
 
@@ -41,6 +47,22 @@ export async function POST(req: Request) {
             baseURL: process.env.AI_GATEWAY_URL ?? 'https://ai-gateway.vercel.sh/v1',
             apiKey,
         });
+
+        const lastUserMessage = [...messages].reverse().find((m: { role: string }) => m.role === 'user');
+        const promptLength = typeof lastUserMessage?.content === 'string' ? lastUserMessage.content.length : 0;
+
+        if (userId) {
+            const supabase = createSupabaseAdminClient();
+            supabase.from("ai_usage_logs").insert({
+                owner_id: userId,
+                provider: "ai-gateway",
+                kind: "chat",
+                tokens_used: Math.ceil(promptLength / 4),
+                metadata: { model: "anthropic/claude-opus-4-5-20251101", prompt_length: promptLength },
+            }).then(({ error: logErr }) => {
+                if (logErr) console.error("Failed to log AI usage:", logErr);
+            });
+        }
 
         const result = streamText({
             model: gateway('anthropic/claude-opus-4-5-20251101'),

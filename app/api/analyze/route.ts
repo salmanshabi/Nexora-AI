@@ -1,13 +1,19 @@
 import { NextResponse } from "next/server";
 import Bytez from "bytez.js";
 
-const key = "d0a484c7394303209afaa881f7a3f8bd";
+import { auth } from "@/auth";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+
+const key = process.env.BYTEZ_API_KEY ?? "";
 const sdk = new Bytez(key);
 
 // choose claude-opus-4-6
 const model = sdk.model("anthropic/claude-opus-4-6");
 
 export async function POST(req: Request) {
+  const session = await auth();
+  const userId = session?.user?.id ?? null;
+
   try {
     const body = await req.json();
     const { description, language } = body;
@@ -108,6 +114,19 @@ export async function POST(req: Request) {
     } else {
       // Direct object response fallback
       parsedResult = output;
+    }
+
+    if (userId) {
+      const supabase = createSupabaseAdminClient();
+      supabase.from("ai_usage_logs").insert({
+        owner_id: userId,
+        provider: "bytez",
+        kind: "analyze",
+        tokens_used: description?.length ? Math.ceil(description.length / 4) : 0,
+        metadata: { model: "anthropic/claude-opus-4-6", prompt_length: description?.length ?? 0 },
+      }).then(({ error: logErr }) => {
+        if (logErr) console.error("Failed to log AI usage:", logErr);
+      });
     }
 
     return NextResponse.json(parsedResult);
