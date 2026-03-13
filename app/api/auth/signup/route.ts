@@ -60,7 +60,7 @@ export async function POST(req: Request) {
         );
     } catch (error: unknown) {
         if (error instanceof z.ZodError) {
-            return NextResponse.json({ error: error.errors[0].message }, { status: 400 });
+            return NextResponse.json({ error: error.issues[0]?.message ?? "Invalid request" }, { status: 400 });
         }
         console.error("Signup error:", error);
         return NextResponse.json(
