@@ -1,6 +1,6 @@
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 generator client {
@@ -26,8 +26,8 @@ model Project {
   id                String   @id @default(uuid())
   userId            String
   name              String
-  pagesData         String   // Storing JSON as String in SQLite
-  globalDesignState String   // Storing JSON as String in SQLite
+  pagesData         String
+  globalDesignState String
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
