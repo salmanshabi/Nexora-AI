@@ -8,6 +8,7 @@ import NavLinks from "./components/NavLinks";
 import FooterText from "./components/FooterText";
 import { LanguageProvider } from "./context/LanguageContext";
 import AnimatedBackground from "./components/AnimatedBackground";
+import { ChatWidget } from "../components/chat-widget";
 import "./globals.css";
 
 const outfit = Outfit({
@@ -54,6 +55,7 @@ export default function RootLayout({
               </div>
             </nav>
             {children}
+            <ChatWidget />
             <footer className="border-t border-gray-800 bg-gray-950 px-8 py-8 text-center text-sm text-gray-600">
               <FooterText />
             </footer>

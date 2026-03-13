@@ -1,20 +1,8 @@
-import { NextResponse } from "next/server";
-import Bytez from "bytez.js";
+import { streamText } from 'ai';
+import { createOpenAI } from '@ai-sdk/openai';
 
-const key = "d0a484c7394303209afaa881f7a3f8bd";
-const sdk = new Bytez(key);
-
-export async function POST(req: Request) {
-    try {
-        const body = await req.json();
-        const { messages } = body;
-
-        if (!messages || !Array.isArray(messages)) {
-            return NextResponse.json({ error: "Messages array is required" }, { status: 400 });
-        }
-
-        const systemInstruction = `
-You are the built-in AI Assistant for the "Nexora AI" website builder. 
+const systemInstruction = `
+You are the built-in AI Assistant for the "Nexora AI" website builder.
 Your goal is to help the user build beautiful websites and troubleshoot any issues they might have within the builder.
 Always respond with clarity, encouragement, and actionable advice.
 
@@ -34,49 +22,35 @@ Avoid generic AI-generated aesthetics:
 - Predictable layouts and component patterns
 - Cookie-cutter design that lacks context-specific character
 </frontend_aesthetics>
-        `;
+`;
 
-        const modelName = "anthropic/claude-opus-4-5-20251101";
-        const model = sdk.model(modelName);
+export async function POST(req: Request) {
+    try {
+        const { messages } = await req.json();
 
-        // Prep messages for Bytez/Anthropic
-        const apiMessages = [
-            { role: "system", content: systemInstruction },
-            ...messages.map((m: any) => ({
-                role: m.role,
-                content: m.content
-            }))
-        ];
-
-        const result = await model.run(apiMessages);
-
-        if (result.error) {
-            console.error(`Bytez AI Chat Error (${modelName}):`, result.error);
-            return NextResponse.json({ error: "Failed to generate chat response" }, { status: 500 });
+        if (!messages || !Array.isArray(messages)) {
+            return new Response(JSON.stringify({ error: 'Messages array is required' }), { status: 400 });
         }
 
-        // Handle various output formats from Bytez
-        let responseContent = "I'm sorry, I couldn't generate a response.";
-        const output = result.output;
-        
-        if (typeof output === "string") {
-            responseContent = output;
-        } else if (typeof output === "object" && output !== null) {
-            if (!Array.isArray(output) && 'content' in output) {
-                responseContent = output.content;
-            } else if (Array.isArray(output) && output.length > 0) {
-                const firstResult = output[0];
-                if (firstResult?.message?.content) {
-                    responseContent = firstResult.message.content;
-                } else if (typeof firstResult?.content === 'string') {
-                    responseContent = firstResult.content;
-                }
-            }
+        const apiKey = process.env.AI_GATEWAY_KEY;
+        if (!apiKey) {
+            return new Response(JSON.stringify({ error: 'AI Gateway key not configured' }), { status: 500 });
         }
 
-        return NextResponse.json({ role: 'assistant', content: responseContent });
+        const gateway = createOpenAI({
+            baseURL: process.env.AI_GATEWAY_URL ?? 'https://ai-gateway.vercel.sh/v1',
+            apiKey,
+        });
+
+        const result = streamText({
+            model: gateway('anthropic/claude-opus-4-5-20251101'),
+            system: systemInstruction,
+            messages,
+        });
+
+        return result.toDataStreamResponse();
     } catch (err) {
-        console.error("Chat API Error:", err);
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+        console.error('Chat API Error:', err);
+        return new Response(JSON.stringify({ error: 'Internal Server Error' }), { status: 500 });
     }
 }
