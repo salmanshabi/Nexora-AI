@@ -1,24 +1,65 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
-import { useChat } from '@ai-sdk/react';
 import { MessageSquare, X, Send, Loader2, Bot } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
+type Message = { id: string; role: 'user' | 'assistant'; content: string };
+
 export function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const { messages, input, handleInputChange, handleSubmit, isLoading, error } = useChat({
-    api: '/api/chat',
-    streamProtocol: 'text',
-  });
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
 
   const toggleChat = () => setIsOpen(!isOpen);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || isLoading) return;
+
+    const userMessage: Message = { id: Date.now().toString(), role: 'user', content: input };
+    const allMessages = [...messages, userMessage];
+    setMessages(allMessages);
+    setInput('');
+    setIsLoading(true);
+
+    const assistantId = (Date.now() + 1).toString();
+    setMessages(prev => [...prev, { id: assistantId, role: 'assistant', content: '' }]);
+
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: allMessages.map(({ role, content }) => ({ role, content })) }),
+      });
+
+      if (!response.ok || !response.body) throw new Error('Failed to send message');
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        setMessages(prev =>
+          prev.map(m => m.id === assistantId ? { ...m, content: m.content + chunk } : m)
+        );
+      }
+    } catch {
+      setMessages(prev =>
+        prev.map(m => m.id === assistantId ? { ...m, content: 'Sorry, I encountered an error. Please try again.' } : m)
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
@@ -47,16 +88,10 @@ export function ChatWidget() {
 
           {/* Messages Area */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {messages.length === 0 && !error && (
+            {messages.length === 0 && (
               <div className="text-center text-zinc-500 mt-10">
                 <Bot className="w-12 h-12 mx-auto mb-3 opacity-20" />
                 <p className="text-sm">Hello! How can I help you build your website today?</p>
-              </div>
-            )}
-
-            {error && (
-              <div className="text-center text-red-500 mt-10">
-                <p className="text-sm">Something went wrong. Please try again.</p>
               </div>
             )}
 
@@ -79,13 +114,13 @@ export function ChatWidget() {
                   {msg.role === 'user' ? (
                     msg.content
                   ) : (
-                    <ReactMarkdown>{msg.content}</ReactMarkdown>
+                    <ReactMarkdown>{msg.content || '▋'}</ReactMarkdown>
                   )}
                 </div>
               </div>
             ))}
 
-            {isLoading && (
+            {isLoading && messages[messages.length - 1]?.role !== 'assistant' && (
               <div className="flex items-start justify-start">
                 <div className="w-6 h-6 rounded-full bg-primary/10 flex-shrink-0 flex items-center justify-center text-primary mr-2 mt-1">
                   <Bot className="w-4 h-4" />
@@ -107,7 +142,7 @@ export function ChatWidget() {
               <input
                 type="text"
                 value={input}
-                onChange={handleInputChange}
+                onChange={(e) => setInput(e.target.value)}
                 placeholder="Ask about design, layouts, or builders..."
                 className="w-full pl-4 pr-12 py-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 border-none focus:ring-2 focus:ring-primary text-sm dark:text-zinc-100"
                 disabled={isLoading}
