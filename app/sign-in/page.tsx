@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { signIn, getProviders } from "next-auth/react";
+import { signIn } from "next-auth/react";
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -21,15 +21,7 @@ export default function SignIn() {
   ) => {
     setFormError("");
     try {
-      const providers = await getProviders();
-      if (!providers?.[provider]) {
-        setFormError("This sign-in method is not configured yet. Please use email and password.");
-        return;
-      }
-      const result = await signIn(provider, { callbackUrl, redirect: true });
-      if (result?.error) {
-        setFormError("OAuth sign-in failed. Please use email and password.");
-      }
+      await signIn(provider, { callbackUrl, redirect: true });
     } catch {
       setFormError("OAuth sign-in is unavailable right now. Please use email and password.");
     }
